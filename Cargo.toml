@@ -3,6 +3,7 @@ members = [
     "crates/iax2-proto",
     "crates/asl-dsp",
     "crates/asl-core",
+    "crates/asl-client",
 ]
 resolver = "2"
 

@@ -1,0 +1,16 @@
+[package]
+name = "asl-client"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Async IAX2 network client and AllStarLink node session manager"
+
+[dependencies]
+iax2-proto = { path = "../iax2-proto" }
+asl-dsp = { path = "../asl-dsp" }
+asl-core = { path = "../asl-core" }
+md-5 = "0.10"
+hex = "0.4"
+
+[dev-dependencies]
