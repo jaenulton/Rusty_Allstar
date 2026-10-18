@@ -8,7 +8,7 @@ pub mod registration;
 pub mod session;
 
 pub use auth::compute_md5_response;
-pub use dns_lookup::{format_asl_node_hostname, resolve_node_stub, NodeLocation};
+pub use dns_lookup::{format_asl_node_hostname, resolve_asl_node, resolve_node_stub, NodeLocation};
 pub use registration::{RegAction, RegState, RegistrationClient};
 pub use session::{CallSession, SessionState};
 

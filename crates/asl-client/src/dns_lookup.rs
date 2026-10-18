@@ -3,7 +3,7 @@
 //! Resolves numeric AllStarLink node numbers (e.g. 50000) to host IP and IAX2 port
 //! via AllStarLink DNS SRV / TXT records or directory queries.
 
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
 
 /// Node lookup result containing target IP and port
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,6 +34,28 @@ pub fn resolve_node_stub(node: u32) -> Option<NodeLocation> {
     }
 }
 
+/// Resolves an AllStarLink node number to its target SocketAddr.
+/// First checks the static stub table, and if not present, attempts DNS lookup via standard ASL domain.
+pub fn resolve_asl_node(node: u32) -> Option<NodeLocation> {
+    // 1. Check stub table first
+    if let Some(loc) = resolve_node_stub(node) {
+        return Some(loc);
+    }
+
+    // 2. Query nodes.allstarlink.org:4569 via system DNS
+    let host = format!("{}:4569", format_asl_node_hostname(node));
+    if let Ok(mut addrs) = host.to_socket_addrs() {
+        if let Some(addr) = addrs.next() {
+            return Some(NodeLocation {
+                node,
+                socket_addr: addr,
+            });
+        }
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -48,5 +70,12 @@ mod tests {
     fn test_node_lookup_stub() {
         let loc = resolve_node_stub(1999).expect("expected node 1999");
         assert_eq!(loc.socket_addr.port(), 4569);
+    }
+
+    #[test]
+    fn test_resolve_asl_node() {
+        // Known stub node
+        let loc = resolve_asl_node(1999).expect("expected node 1999");
+        assert_eq!(loc.socket_addr.ip(), IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
     }
 }

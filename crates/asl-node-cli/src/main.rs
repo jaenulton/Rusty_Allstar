@@ -11,9 +11,9 @@ use tokio::sync::{mpsc, RwLock};
 use tokio::time::{interval, Duration};
 use tracing::{error, info, warn};
 
-use asl_client::{CallSession, SessionState};
+use asl_client::{resolve_asl_node, CallSession, SessionState};
 use asl_core::{Action, RepeaterConfig, RepeaterController};
-use asl_dsp::{decode_ulaw_slice, encode_ulaw_slice, CwGenerator, DtmfDetector};
+use asl_dsp::{decode_ulaw_slice, encode_ulaw_slice, CwGenerator, DtmfDetector, JitterBuffer, JitterBufferConfig};
 use iax2_proto::constants::{FrameType, IaxCommand};
 use iax2_proto::frame::{Frame, FullFrame};
 
@@ -36,9 +36,9 @@ enum Commands {
         #[arg(short, long)]
         target_node: String,
 
-        /// Remote host IP and port (e.g. 127.0.0.1:4569)
+        /// Remote host IP and port (e.g. 127.0.0.1:4569). If omitted, resolved automatically via ASL DNS directory.
         #[arg(long)]
-        host: SocketAddr,
+        host: Option<SocketAddr>,
 
         /// Local node number (default: 1999)
         #[arg(long, default_value = "1999")]
@@ -121,7 +121,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn run_connect_client(
     target_node: String,
-    host: SocketAddr,
+    host_opt: Option<SocketAddr>,
     my_node: String,
     password: String,
     bind: SocketAddr,
@@ -129,6 +129,29 @@ async fn run_connect_client(
     live_mic: bool,
     tone: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Resolve host: user specified or ASL DNS / stub lookup
+    let host = match host_opt {
+        Some(h) => h,
+        None => {
+            let node_num: u32 = target_node.parse().map_err(|_| {
+                format!("Invalid target node number '{}' for DNS resolution", target_node)
+            })?;
+            match resolve_asl_node(node_num) {
+                Some(loc) => {
+                    info!("Resolved AllStarLink node {} -> {}", node_num, loc.socket_addr);
+                    loc.socket_addr
+                }
+                None => {
+                    return Err(format!(
+                        "Could not resolve AllStarLink node {} via DNS or directory. Specify --host manually.",
+                        target_node
+                    )
+                    .into());
+                }
+            }
+        }
+    };
+
     let socket = Arc::new(UdpSocket::bind(bind).await?);
     info!(
         "Bound to local address {} -> connecting to node {} at {}",
@@ -181,6 +204,9 @@ async fn run_connect_client(
 
     let mut session = CallSession::new(1001);
     let mut send_buf = [0u8; 512];
+
+    // Initialize Adaptive Jitter Buffer (60ms target delay, 200ms max capacity)
+    let mut jitter_buffer = JitterBuffer::new(JitterBufferConfig::default());
 
     // Build and send initial NEW frame
     let len = session.build_new(&target_node, &my_node, &my_node, &mut send_buf)?;
@@ -257,9 +283,8 @@ async fn run_connect_client(
                         // Inbound 20ms audio frame from AllStarLink node
                         *state.cos_active.write().await = true;
                         if mini.payload.len() == 160 {
-                            let mut pcm = [0i16; 160];
-                            decode_ulaw_slice(mini.payload, &mut pcm);
-                            let _ = speaker_tx.try_send(pcm);
+                            // Enqueue packet into Adaptive Jitter Buffer
+                            jitter_buffer.put_frame(mini.timestamp_16 as u32, mini.payload);
                         }
                     }
                     Ok(Frame::Meta(_)) => {}
@@ -269,9 +294,16 @@ async fn run_connect_client(
                 }
             }
 
-            // Periodic 20ms audio frame transmission
+            // Periodic 20ms audio frame transmission and speaker playout
             _ = frame_timer.tick() => {
                 session.advance_time(20);
+
+                // Drain ready frames from JitterBuffer to speaker
+                if let Some(frame_ulaw) = jitter_buffer.get_frame() {
+                    let mut pcm = [0i16; 160];
+                    decode_ulaw_slice(&frame_ulaw, &mut pcm);
+                    let _ = speaker_tx.try_send(pcm);
+                }
 
                 if session.state == SessionState::Connected {
                     let mut ulaw_buf = [0u8; 160];
