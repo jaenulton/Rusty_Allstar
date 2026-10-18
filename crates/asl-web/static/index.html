@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rusty_Allstar Control Panel</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --green: #22c55e;
+      --red: #ef4444;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 1.5rem;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+    .header h1 { font-size: 1.5rem; color: var(--accent); display: flex; align-items: center; gap: 0.5rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+    }
+    .card-title {
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    .indicators {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: space-around;
+      margin: 1rem 0;
+    }
+    .indicator {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .led {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #334155;
+      transition: all 0.2s ease;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+    }
+    .led.cos-active {
+      background: var(--green);
+      box-shadow: 0 0 16px var(--green), inset 0 1px 2px rgba(255,255,255,0.6);
+    }
+    .led.ptt-active {
+      background: var(--red);
+      box-shadow: 0 0 16px var(--red), inset 0 1px 2px rgba(255,255,255,0.6);
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #263349;
+    }
+    .stat-label { color: var(--text-muted); font-size: 0.9rem; }
+    .stat-value { font-weight: 600; font-family: monospace; font-size: 1rem; }
+    .btn {
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      border-radius: 0.375rem;
+      padding: 0.6rem 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: filter 0.15s ease;
+    }
+    .btn:hover { filter: brightness(1.1); }
+    .btn-danger { background: var(--red); color: white; }
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .keypad button {
+      background: #273549;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.75rem 0;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: 0.375rem;
+      cursor: pointer;
+    }
+    .keypad button:active { background: var(--accent); color: #0f172a; }
+    .input-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .input-group input {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      padding: 0.5rem 0.75rem;
+      color: white;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📻 Rusty_Allstar Node Controller</h1>
+    <div id="connection-badge" style="color: var(--green); font-weight: bold;">● SYSTEM READY</div>
+  </div>
+
+  <div class="grid">
+    <!-- Live Telemetry Card -->
+    <div class="card">
+      <div class="card-title">Radio Hardware State</div>
+      <div class="indicators">
+        <div class="indicator">
+          <div id="led-cos" class="led"></div>
+          <span style="font-size: 0.8rem; font-weight: bold;">RX / COS</span>
+        </div>
+        <div class="indicator">
+          <div id="led-ptt" class="led"></div>
+          <span style="font-size: 0.8rem; font-weight: bold;">TX / PTT</span>
+        </div>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Callsign</span>
+        <span id="callsign" class="stat-value">W1AW</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Local Node</span>
+        <span id="local-node" class="stat-value">1999</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Connected Node</span>
+        <span id="connected-node" class="stat-value" style="color: var(--accent);">DISCONNECTED</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Session State</span>
+        <span id="session-state" class="stat-value">Idle</span>
+      </div>
+    </div>
+
+    <!-- RF Transceiver (SA818) Card -->
+    <div class="card">
+      <div class="card-title">RF Transceiver (SA818)</div>
+      <div class="stat-row">
+        <span class="stat-label">TX / RX Frequency</span>
+        <span id="rf-freq" class="stat-value">446.0000 MHz</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">CTCSS PL Tone</span>
+        <span id="rf-ctcss" class="stat-value">100.0 Hz</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Squelch Level</span>
+        <span id="rf-sq" class="stat-value">Level 4</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Audio Volume</span>
+        <span id="rf-vol" class="stat-value">5 / 8</span>
+      </div>
+      <div style="margin-top: 1rem;">
+        <button class="btn" onclick="triggerCwId()">Force Station CW ID</button>
+      </div>
+    </div>
+
+    <!-- Link Control Card -->
+    <div class="card">
+      <div class="card-title">Node Link Management</div>
+      <div class="stat-label">Connect to AllStar Node Number:</div>
+      <div class="input-group">
+        <input type="text" id="target-node-input" placeholder="e.g. 50000">
+        <button class="btn" onclick="connectNode()">Link</button>
+        <button class="btn btn-danger" onclick="disconnectNode()">Drop</button>
+      </div>
+
+      <div class="card-title" style="margin-top: 1.25rem;">DTMF Command Pad</div>
+      <div class="keypad">
+        <button onclick="sendDtmf('1')">1</button>
+        <button onclick="sendDtmf('2')">2</button>
+        <button onclick="sendDtmf('3')">3</button>
+        <button onclick="sendDtmf('A')" style="color: var(--accent);">A</button>
+        <button onclick="sendDtmf('4')">4</button>
+        <button onclick="sendDtmf('5')">5</button>
+        <button onclick="sendDtmf('6')">6</button>
+        <button onclick="sendDtmf('B')" style="color: var(--accent);">B</button>
+        <button onclick="sendDtmf('7')">7</button>
+        <button onclick="sendDtmf('8')">8</button>
+        <button onclick="sendDtmf('9')">9</button>
+        <button onclick="sendDtmf('C')" style="color: var(--accent);">C</button>
+        <button onclick="sendDtmf('*')" style="color: var(--accent);">*</button>
+        <button onclick="sendDtmf('0')">0</button>
+        <button onclick="sendDtmf('#')" style="color: var(--accent);">#</button>
+        <button onclick="sendDtmf('D')" style="color: var(--accent);">D</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function updateStatus() {
+      try {
+        const res = await fetch('/api/status');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('callsign').textContent = data.callsign;
+          document.getElementById('local-node').textContent = data.local_node;
+          document.getElementById('connected-node').textContent = data.connected_node || 'DISCONNECTED';
+          document.getElementById('session-state').textContent = data.state;
+
+          const ledCos = document.getElementById('led-cos');
+          if (data.cos_active) ledCos.classList.add('cos-active'); else ledCos.classList.remove('cos-active');
+
+          const ledPtt = document.getElementById('led-ptt');
+          if (data.ptt_active) ledPtt.classList.add('ptt-active'); else ledPtt.classList.remove('ptt-active');
+        }
+      } catch (e) {
+        console.warn('Status poll error:', e);
+      }
+    }
+
+    async function connectNode() {
+      const node = document.getElementById('target-node-input').value;
+      if (!node) return;
+      await fetch('/api/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_node: node })
+      });
+      updateStatus();
+    }
+
+    async function disconnectNode() {
+      await fetch('/api/disconnect', { method: 'POST' });
+      updateStatus();
+    }
+
+    async function sendDtmf(digit) {
+      await fetch('/api/dtmf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ digit })
+      });
+    }
+
+    async function triggerCwId() {
+      await fetch('/api/cw-id', { method: 'POST' });
+    }
+
+    setInterval(updateStatus, 1000);
+    updateStatus();
+  </script>
+</body>
+</html>

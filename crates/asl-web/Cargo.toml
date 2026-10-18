@@ -1,0 +1,17 @@
+[package]
+name = "asl-web"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Embedded Web UI and REST API dashboard for Rusty_Allstar"
+
+[dependencies]
+asl-core = { path = "../asl-core" }
+asl-client = { path = "../asl-client" }
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+
+[features]
+default = ["std"]
+std = ["serde/std", "serde_json/std"]

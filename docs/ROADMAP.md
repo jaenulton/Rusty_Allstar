@@ -26,18 +26,25 @@
 - [x] **Desktop CLI Node (`crates/asl-node-cli`)**
   - [x] Async UDP network transport using Tokio.
   - [x] CLI interface with `connect`, `listen`, and `dsp-test` commands.
+  - [x] Embedded HTTP Web Management Dashboard (`axum`, `asl-web`).
+  - [x] Live desktop sound card microphone/speaker I/O (`cpal`).
   - [x] Synthetic 1000 Hz tone generator for live loopback testing.
 
 ## Phase 3: ESP32 Port & Embedded Integration
-- [ ] **ESP32 Firmware Target (`crates/asl-esp32`)**
-  - [ ] ESP-IDF FreeRTOS dual-core task assignment:
+- [x] **ESP32 Firmware Target (`crates/asl-esp32`)**
+  - [x] ESP-IDF FreeRTOS dual-core task assignment:
     - Core 0: WiFi / LwIP UDP stack & IAX2 call session.
     - Core 1: I2S DMA audio pipeline, DSP tone filters, and GPIO repeater controller.
-  - [ ] Hardware I2S codec driver (ES8388, PCM5102, or WM8960).
-  - [ ] Hardware GPIO interrupts for Carrier Operated Squelch (COS) and Push-To-Talk (PTT).
-  - [ ] Non-volatile configuration storage (NVS) for WiFi SSID, node credentials, and audio levels.
+  - [x] Hardware I2S codec driver abstraction (`I2sHardwareDriver`).
+  - [x] Hardware GPIO interrupts & safety watchdog for COS & PTT (`GpioInterruptController`).
+  - [x] Non-volatile configuration storage (`NodeNvsConfig` for Wi-Fi, node ID, and radio frequencies).
+  - [x] Direct UART AT driver for NiceRF SA818 / SA818S VHF/UHF transceiver modules.
 
 ## Phase 4: Hardware & Web Configuration
-- [ ] Embedded web configuration UI served directly from ESP32.
-- [ ] Direct UART control for embedded NiceRF SA818 / SR-FRS transceiver modules.
-- [ ] Open hardware reference schematic (KiCad) for an all-in-one ESP32 micro-node.
+- [x] **Embedded Web UI (`crates/asl-web`)**
+  - [x] High-tech dark-mode dashboard with live COS/PTT glowing LEDs, DTMF keypad, and CW ID button.
+  - [x] JSON REST API endpoints (`/api/status`, `/api/connect`, `/api/disconnect`, `/api/dtmf`, `/api/cwid`).
+- [x] **Open Hardware Reference Design (`hardware/kicad/`)**
+  - [x] Engineering specification & Bill of Materials (`HARDWARE_DESIGN_SPEC.md`).
+  - [x] KiCad project & netlist schema (`rusty_allstar_micronode.kicad_sch`).
+  - [x] 5-pole Chebyshev low-pass harmonic suppression filter & 50Ω coplanar waveguide layout guidelines.

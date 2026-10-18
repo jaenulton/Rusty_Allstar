@@ -1,17 +1,24 @@
-//! Rusty_Allstar CLI Node & Testbed Runner
+//! Rusty_Allstar CLI Node & Testbed Runner with Embedded Web UI and Real-Time Audio
+
+pub mod audio_device;
+pub mod web_server;
 
 use clap::{Parser, Subcommand};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::UdpSocket;
+use tokio::sync::{mpsc, RwLock};
 use tokio::time::{interval, Duration};
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use asl_client::{CallSession, SessionState};
 use asl_core::{Action, RepeaterConfig, RepeaterController};
 use asl_dsp::{decode_ulaw_slice, encode_ulaw_slice, CwGenerator, DtmfDetector};
 use iax2_proto::constants::{FrameType, IaxCommand};
 use iax2_proto::frame::{Frame, FullFrame};
+
+use audio_device::AudioSubsystem;
+use web_server::{start_web_server, AppState, NodeCommand};
 
 #[derive(Parser, Debug)]
 #[command(name = "asl-node-cli")]
@@ -23,7 +30,7 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Connect to a remote AllStarLink node over IAX2
+    /// Connect to a remote AllStarLink node over IAX2 with optional Web UI and Live Audio
     Connect {
         /// Remote AllStar node number (e.g. 50000)
         #[arg(short, long)]
@@ -45,6 +52,14 @@ enum Commands {
         #[arg(short, long, default_value = "0.0.0.0:0")]
         bind: SocketAddr,
 
+        /// Port to serve the embedded web management dashboard on (e.g. 8080)
+        #[arg(long, default_value = "8080")]
+        web_port: u16,
+
+        /// Stream live microphone audio to remote node
+        #[arg(long, default_value_t = false)]
+        live_mic: bool,
+
         /// Generate and stream a 1000 Hz test tone once connected
         #[arg(long, default_value_t = false)]
         tone: bool,
@@ -59,6 +74,10 @@ enum Commands {
         /// Callsign for repeater controller
         #[arg(short, long, default_value = "N0CALL")]
         callsign: String,
+
+        /// Port to serve the embedded web management dashboard on
+        #[arg(long, default_value = "8080")]
+        web_port: u16,
     },
 
     /// Run local DSP diagnostics (DTMF detection, CW generation, G.711 codec)
@@ -83,12 +102,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             my_node,
             password,
             bind,
+            web_port,
+            live_mic,
             tone,
         } => {
-            run_connect_client(target_node, host, my_node, password, bind, tone).await?;
+            run_connect_client(target_node, host, my_node, password, bind, web_port, live_mic, tone).await?;
         }
-        Commands::Listen { bind, callsign } => {
-            run_listener(bind, callsign).await?;
+        Commands::Listen { bind, callsign, web_port } => {
+            run_listener(bind, callsign, web_port).await?;
         }
         Commands::DspTest => {
             run_dsp_test();
@@ -104,6 +125,8 @@ async fn run_connect_client(
     my_node: String,
     password: String,
     bind: SocketAddr,
+    web_port: u16,
+    live_mic: bool,
     tone: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let socket = Arc::new(UdpSocket::bind(bind).await?);
@@ -113,6 +136,48 @@ async fn run_connect_client(
         target_node,
         host
     );
+
+    let (cmd_tx, mut cmd_rx) = mpsc::channel::<NodeCommand>(32);
+    let (mic_tx, mut mic_rx) = mpsc::channel::<[i16; 160]>(32);
+    let (speaker_tx, speaker_rx) = mpsc::channel::<[i16; 160]>(32);
+
+    let state = AppState {
+        callsign: Arc::new(RwLock::new("W1AW".to_string())),
+        local_node: Arc::new(RwLock::new(my_node.clone())),
+        connected_node: Arc::new(RwLock::new(Some(target_node.clone()))),
+        link_state: Arc::new(RwLock::new("CONNECTING".to_string())),
+        cos_active: Arc::new(RwLock::new(false)),
+        ptt_active: Arc::new(RwLock::new(live_mic || tone)),
+        rf_freq: Arc::new(RwLock::new("446.0000".to_string())),
+        rf_ctcss: Arc::new(RwLock::new(100.0)),
+        squelch_level: Arc::new(RwLock::new(4)),
+        command_tx: cmd_tx,
+    };
+
+    // Spawn Web Dashboard Server
+    let web_addr: SocketAddr = format!("0.0.0.0:{}", web_port).parse()?;
+    let web_state = state.clone();
+    tokio::spawn(async move {
+        if let Err(e) = start_web_server(web_addr, web_state).await {
+            error!("Web server failed: {:?}", e);
+        }
+    });
+
+    // Start Live Audio Subsystem if mic enabled
+    let _audio_system = if live_mic {
+        match AudioSubsystem::start(mic_tx, speaker_rx) {
+            Ok(s) => {
+                info!("Live desktop audio I/O initialized successfully");
+                Some(s)
+            }
+            Err(e) => {
+                warn!("Could not start host audio I/O (running in headless mode): {:?}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
 
     let mut session = CallSession::new(1001);
     let mut send_buf = [0u8; 512];
@@ -131,6 +196,27 @@ async fn run_connect_client(
 
     loop {
         tokio::select! {
+            // Commands from Web UI
+            Some(cmd) = cmd_rx.recv() => {
+                match cmd {
+                    NodeCommand::Connect { target_node: t, .. } => {
+                        info!("Web UI Connect triggered for target {}", t);
+                        *state.connected_node.write().await = Some(t);
+                    }
+                    NodeCommand::Disconnect => {
+                        info!("Web UI Disconnect command received");
+                        *state.link_state.write().await = "DISCONNECTED".to_string();
+                        *state.connected_node.write().await = None;
+                    }
+                    NodeCommand::SendDtmf(ch) => {
+                        info!("Web UI Sent DTMF digit: '{}'", ch);
+                    }
+                    NodeCommand::ForceCwId => {
+                        info!("Web UI Station CW ID triggered");
+                    }
+                }
+            }
+
             // Receive inbound UDP packets from remote node
             Ok((n, peer)) = socket.recv_from(&mut recv_buf) => {
                 if peer != host {
@@ -145,7 +231,6 @@ async fn run_connect_client(
                         );
                         session.process_incoming_full(&full);
 
-                        // If remote requested authentication (AUTHREQ)
                         if full.frame_type == FrameType::Iax && full.subclass == u8::from(IaxCommand::AuthReq) {
                             let mut challenge = "";
                             for ie in full.ies() {
@@ -160,6 +245,7 @@ async fn run_connect_client(
                             socket.send_to(&send_buf[..auth_len], host).await?;
                         } else if full.frame_type == FrameType::Iax && full.subclass == u8::from(IaxCommand::Accept) {
                             info!("Connection ACCEPTED by node {}! Link established.", target_node);
+                            *state.link_state.write().await = "LINKED".to_string();
                             let ack_len = session.build_ack(full.timestamp, &mut send_buf)?;
                             socket.send_to(&send_buf[..ack_len], host).await?;
                         } else if full.frame_type == FrameType::Iax && full.subclass == u8::from(IaxCommand::Ping) {
@@ -168,10 +254,13 @@ async fn run_connect_client(
                         }
                     }
                     Ok(Frame::Mini(mini)) => {
-                        // Received 20ms voice packet
-                        let samples_count = mini.payload.len();
-                        let mut pcm = vec![0i16; samples_count];
-                        decode_ulaw_slice(mini.payload, &mut pcm);
+                        // Inbound 20ms audio frame from AllStarLink node
+                        *state.cos_active.write().await = true;
+                        if mini.payload.len() == 160 {
+                            let mut pcm = [0i16; 160];
+                            decode_ulaw_slice(mini.payload, &mut pcm);
+                            let _ = speaker_tx.try_send(pcm);
+                        }
                     }
                     Ok(Frame::Meta(_)) => {}
                     Err(e) => {
@@ -180,25 +269,37 @@ async fn run_connect_client(
                 }
             }
 
-            // Periodic 20ms audio frame generator
+            // Periodic 20ms audio frame transmission
             _ = frame_timer.tick() => {
                 session.advance_time(20);
 
-                if session.state == SessionState::Connected && tone {
-                    let mut pcm = [0i16; 160]; // 20ms @ 8 kHz = 160 samples
-                    for s in pcm.iter_mut() {
-                        *s = (phase.sin() * 8000.0) as i16;
-                        phase += phase_inc;
-                        if phase >= 2.0 * std::f32::consts::PI {
-                            phase -= 2.0 * std::f32::consts::PI;
+                if session.state == SessionState::Connected {
+                    let mut ulaw_buf = [0u8; 160];
+                    let mut has_audio = false;
+
+                    // Option A: Live Microphone Audio
+                    if let Ok(mic_frame) = mic_rx.try_recv() {
+                        encode_ulaw_slice(&mic_frame, &mut ulaw_buf);
+                        has_audio = true;
+                    }
+                    // Option B: Synthetic Test Tone
+                    else if tone {
+                        let mut pcm = [0i16; 160];
+                        for s in pcm.iter_mut() {
+                            *s = (phase.sin() * 8000.0) as i16;
+                            phase += phase_inc;
+                            if phase >= 2.0 * std::f32::consts::PI {
+                                phase -= 2.0 * std::f32::consts::PI;
+                            }
                         }
+                        encode_ulaw_slice(&pcm, &mut ulaw_buf);
+                        has_audio = true;
                     }
 
-                    let mut ulaw_buf = [0u8; 160];
-                    encode_ulaw_slice(&pcm, &mut ulaw_buf);
-
-                    let mini_len = session.build_voice_mini(&ulaw_buf, &mut send_buf)?;
-                    socket.send_to(&send_buf[..mini_len], host).await?;
+                    if has_audio {
+                        let mini_len = session.build_voice_mini(&ulaw_buf, &mut send_buf)?;
+                        socket.send_to(&send_buf[..mini_len], host).await?;
+                    }
                 }
             }
 
@@ -213,9 +314,32 @@ async fn run_connect_client(
     }
 }
 
-async fn run_listener(bind: SocketAddr, callsign: String) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_listener(bind: SocketAddr, callsign: String, web_port: u16) -> Result<(), Box<dyn std::error::Error>> {
     let socket = Arc::new(UdpSocket::bind(bind).await?);
     info!("Rusty_Allstar listening for incoming connections on {}", socket.local_addr()?);
+
+    let (cmd_tx, _cmd_rx) = mpsc::channel::<NodeCommand>(32);
+
+    let state = AppState {
+        callsign: Arc::new(RwLock::new(callsign.clone())),
+        local_node: Arc::new(RwLock::new("1999".to_string())),
+        connected_node: Arc::new(RwLock::new(None)),
+        link_state: Arc::new(RwLock::new("LISTENING".to_string())),
+        cos_active: Arc::new(RwLock::new(false)),
+        ptt_active: Arc::new(RwLock::new(false)),
+        rf_freq: Arc::new(RwLock::new("446.0000".to_string())),
+        rf_ctcss: Arc::new(RwLock::new(100.0)),
+        squelch_level: Arc::new(RwLock::new(4)),
+        command_tx: cmd_tx,
+    };
+
+    let web_addr: SocketAddr = format!("0.0.0.0:{}", web_port).parse()?;
+    let web_state = state.clone();
+    tokio::spawn(async move {
+        if let Err(e) = start_web_server(web_addr, web_state).await {
+            error!("Web server failed: {:?}", e);
+        }
+    });
 
     let config = RepeaterConfig {
         timeout_timer_ms: 180_000,
@@ -268,7 +392,10 @@ async fn run_listener(bind: SocketAddr, callsign: String) -> Result<(), Box<dyn 
             _ = tick_timer.tick() => {
                 if let Some(action) = controller.tick(100) {
                     match action {
-                        Action::SetPtt(active) => info!("Repeater Action: PTT -> {}", active),
+                        Action::SetPtt(active) => {
+                            *state.ptt_active.write().await = active;
+                            info!("Repeater Action: PTT -> {}", active);
+                        }
                         Action::PlayCourtesyTone => info!("Repeater Action: Play courtesy beep"),
                         Action::PlayCwId(call) => info!("Repeater Action: Send CW ID: {}", call),
                     }
@@ -301,7 +428,7 @@ fn run_dsp_test() {
     let mut p_row = 0.0f32;
     let mut p_col = 0.0f32;
 
-    for _ in 0..410 { // 2 blocks
+    for _ in 0..410 {
         let s = (p_row.sin() * 0.5 + p_col.sin() * 0.5) * 16384.0;
         if let Some(ch) = dtmf.process_sample(s as i16) {
             detected_char = Some(ch);

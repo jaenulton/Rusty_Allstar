@@ -1,0 +1,19 @@
+(kicad_sch
+	(version 20231120)
+	(generator "Rusty_Allstar KiCad Generator")
+	(generator_version "8.0")
+	(uuid "d3a25f18-6c84-48e2-9bfe-852dbbfa9f10")
+	(paper "A4")
+	(title_block
+		(title "Rusty_Allstar All-in-One ESP32 Micro-Node")
+		(date "2026-10-18")
+		(rev "v1.0")
+		(company "Rusty_Allstar Open Source Project")
+		(comment 1 "Dual-Core ESP32 + NiceRF SA818 Transceiver + I2S Audio")
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+)
