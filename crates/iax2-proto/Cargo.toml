@@ -1,0 +1,15 @@
+[package]
+name = "iax2-proto"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Pure Rust RFC 5456 IAX2 protocol frame parser and serializer (no_std compatible)"
+
+[dependencies]
+# Minimal dependencies; no_std compatible
+byteorder = { version = "1.5", default-features = false }
+
+[features]
+default = ["std"]
+std = []

@@ -1,0 +1,15 @@
+[package]
+name = "asl-dsp"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "DSP routines for AllStarLink: G.711 audio codecs, Goertzel tone detectors, and CW/telemetry generators"
+
+[dependencies]
+# Embedded no_std friendly math
+micromath = { version = "2.1", default-features = false }
+
+[features]
+default = ["std"]
+std = []
