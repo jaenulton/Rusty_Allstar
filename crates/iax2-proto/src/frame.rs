@@ -1,14 +1,28 @@
 //! IAX2 Frame Definitions and Zero-Copy Parsers (RFC 5456)
 
+use core::fmt;
 use crate::constants::FrameType;
 use crate::ie::IeIterator;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ParseError {
     BufferTooShort,
     InvalidFullFrameMarker,
     MalformedData,
 }
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParseError::BufferTooShort => write!(f, "IAX2 buffer too short"),
+            ParseError::InvalidFullFrameMarker => write!(f, "Invalid IAX2 full frame marker"),
+            ParseError::MalformedData => write!(f, "Malformed IAX2 packet data"),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for ParseError {}
 
 /// IAX2 Full Frame (RFC 5456 Section 8.1)
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,7 +127,6 @@ impl<'a> FullFrame<'a> {
 }
 
 /// IAX2 Mini Frame (RFC 5456 Section 8.3)
-/// High-efficiency 4-byte header used for sequential voice packets after call establishment.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MiniFrame<'a> {
     pub source_call: u16,

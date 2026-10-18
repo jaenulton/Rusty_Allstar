@@ -1,0 +1,17 @@
+[package]
+name = "asl-node-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Desktop CLI runner and testing bed for Rusty_Allstar"
+
+[dependencies]
+iax2-proto = { path = "../iax2-proto" }
+asl-dsp = { path = "../asl-dsp" }
+asl-core = { path = "../asl-core" }
+asl-client = { path = "../asl-client" }
+tokio = { version = "1.38", features = ["full"] }
+clap = { version = "4.5", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
