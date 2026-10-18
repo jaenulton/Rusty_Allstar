@@ -1,0 +1,18 @@
+[package]
+name = "asl-esp32"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "ESP32 firmware target for Rusty_Allstar: Dual-Core FreeRTOS, I2S Audio DMA, and GPIO radio controller"
+
+[dependencies]
+iax2-proto = { path = "../iax2-proto" }
+asl-dsp = { path = "../asl-dsp" }
+asl-core = { path = "../asl-core" }
+asl-client = { path = "../asl-client" }
+
+[features]
+default = []
+# Enabled when compiling for real ESP32 hardware with esp-idf
+esp-target = []

@@ -5,6 +5,7 @@ members = [
     "crates/asl-core",
     "crates/asl-client",
     "crates/asl-node-cli",
+    "crates/asl-esp32",
 ]
 resolver = "2"
 

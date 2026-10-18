@@ -87,6 +87,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "asl-esp32"
+version = "0.1.0"
+dependencies = [
+ "asl-client",
+ "asl-core",
+ "asl-dsp",
+ "iax2-proto",
+]
+
+[[package]]
 name = "asl-node-cli"
 version = "0.1.0"
 dependencies = [
