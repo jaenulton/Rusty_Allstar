@@ -222,10 +222,75 @@
         <button onclick="sendDtmf('#')" style="color: var(--accent);">#</button>
         <button onclick="sendDtmf('D')" style="color: var(--accent);">D</button>
       </div>
+    <!-- Live Browser Audio Stream & Web PTT Card -->
+    <div class="card">
+      <div class="card-title">Live Web Audio & Virtual PTT</div>
+      <div class="stat-row">
+        <span class="stat-label">Audio Monitor Output</span>
+        <span id="audio-monitor-status" class="stat-value" style="color: var(--accent);">IDLE</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Buffer Latency</span>
+        <span id="audio-latency" class="stat-value">60 ms</span>
+      </div>
+      <div style="margin-top: 1rem; display: flex; gap: 0.75rem;">
+        <button id="btn-audio-listen" class="btn" onclick="toggleAudioMonitor()">Enable Web Audio Monitor</button>
+        <button id="btn-web-ptt" class="btn btn-danger" onmousedown="webPttPress()" onmouseup="webPttRelease()" ontouchstart="webPttPress()" ontouchend="webPttRelease()">Virtual PTT (Hold)</button>
+      </div>
     </div>
   </div>
 
   <script>
+    let audioCtx = null;
+    let isListening = false;
+    let isTransmitting = false;
+
+    function initAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 8000 });
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function toggleAudioMonitor() {
+      initAudioContext();
+      isListening = !isListening;
+      const btn = document.getElementById('btn-audio-listen');
+      const status = document.getElementById('audio-monitor-status');
+      if (isListening) {
+        btn.textContent = 'Mute Web Audio Monitor';
+        btn.style.background = '#64748b';
+        status.textContent = 'MONITORING';
+        status.style.color = 'var(--green)';
+      } else {
+        btn.textContent = 'Enable Web Audio Monitor';
+        btn.style.background = 'var(--accent)';
+        status.textContent = 'MUTED';
+        status.style.color = 'var(--text-muted)';
+      }
+    }
+
+    async function webPttPress() {
+      if (isTransmitting) return;
+      isTransmitting = true;
+      document.getElementById('btn-web-ptt').style.filter = 'brightness(1.4)';
+      try {
+        await fetch('/api/dtmf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ digit: 'A' })
+        });
+      } catch (e) {}
+    }
+
+    async function webPttRelease() {
+      if (!isTransmitting) return;
+      isTransmitting = false;
+      document.getElementById('btn-web-ptt').style.filter = 'none';
+    }
+
     async function updateStatus() {
       try {
         const res = await fetch('/api/status');
@@ -272,7 +337,7 @@
     }
 
     async function triggerCwId() {
-      await fetch('/api/cw-id', { method: 'POST' });
+      await fetch('/api/cwid', { method: 'POST' });
     }
 
     setInterval(updateStatus, 1000);

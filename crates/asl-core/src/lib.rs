@@ -4,8 +4,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod dtmf_command;
 pub mod repeater;
 
+pub use dtmf_command::{DtmfCommand, DtmfCommandProcessor};
 pub use repeater::{Action, ControllerState, RepeaterConfig, RepeaterController};
 
 #[cfg(test)]

@@ -8,6 +8,7 @@ description = "Core repeater controller state machine and telemetry logic for Al
 
 [dependencies]
 asl-dsp = { path = "../asl-dsp" }
+heapless = "0.8"
 
 [features]
 default = ["std"]
