@@ -2,6 +2,7 @@
 
 pub mod audio_device;
 pub mod web_server;
+pub mod tui;
 
 use clap::{Parser, Subcommand};
 use std::net::SocketAddr;
