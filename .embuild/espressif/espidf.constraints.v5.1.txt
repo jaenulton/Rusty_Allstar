@@ -1,0 +1,105 @@
+# --------- CORE ----------
+
+# setuptools: version 64 is required to support PEP 621 - pyproject.toml (with editable installs)
+setuptools>=64
+
+# click: Min. version was set to support the API used in idf.py and auto-completion
+click>=7.0,<8.2
+
+# pyserial: Min. version was set to support the used API
+pyserial>=3.3,<3.6
+
+# cryptography: Min. version was set to support all functionality of ESP-IDF
+# Only binary for cryptography is here to make it work on ARMv7 architecture
+# We do have cryptography binary on https://dl.espressif.com/pypi for ARM
+# On https://pypi.org/ are no ARM binaries as standard now
+cryptography>=2.1.4,<40
+--only-binary cryptography
+
+# pyparsing: Min version was set based on https://github.com/pyparsing/pyparsing/issues/319
+pyparsing>=3.0.3,<3.1
+
+pyelftools<=0.29
+
+# We will bump component manager dependencies after testing the newly released versions with the ESP-IDF pipeline
+idf-component-manager>=1.2,<=2.5.2
+urllib3<2
+
+esptool~=4.8
+
+# bitstring (esptool dependency): 5.0 introduces breaking changes
+bitstring<5
+
+# IDFCI-13852
+esp-coredump~=1.10,!=1.17.0
+
+# esp-idf-kconfig: Config name was extended from 40 to 50 chars (backported to >= 1.4.2)
+esp-idf-kconfig>=1.4.2,<2.0.0
+
+freertos_gdb~=1.0
+
+esp-idf-monitor>=1.0.2,<2
+
+# esp-idf-size with the refactored version
+esp-idf-size>=1.0.1,<2.0.0
+
+# --------- CORE ends ----------
+
+# --------- GDBGUI -------------
+
+gdbgui==0.13.2.0; python_version < "3.11" and sys_platform == 'win32'
+# Windows is not supported since 0.14.0.0. See https://github.com/cs01/gdbgui/issues/348
+# pygdmi dependency is shared between gdbgui, coredump and py_debug_backend
+# pygdbmi 0.10 have breaking changes
+# The pygdbmi required max version 0.9.0.2 since 0.9.0.3 is not compatible with latest gdbgui (>=0.13.2.0)
+pygdbmi<=0.9.0.2; python_version < "3.11" and sys_platform == 'win32'
+# A compatible Socket.IO should be used. See https://github.com/miguelgrinberg/python-socketio/issues/578
+python-socketio<5; python_version < "3.11" and sys_platform == 'win32'
+jinja2<3.1; python_version < "3.11" and sys_platform == 'win32'
+itsdangerous<2.1; python_version < "3.11" and sys_platform == 'win32'
+
+gdbgui>=0.15.2.0; python_version >= "3.11"
+
+# --------- GDBGUI ends ---------
+
+# --------- CI -------------
+
+idf-build-apps~=1.0
+
+# --------- CI ends -------------
+
+# --------- PYTEST -------------
+
+pytest-embedded-serial-esp~=1.0
+pytest-embedded-idf~=1.0
+pytest-embedded-qemu~=1.0
+
+# 1.3.2 is not supported in 3.11. See https://gitlab.freedesktop.org/dbus/dbus-python/-/issues/45
+dbus-python<1.3; python_version > "3.10"
+
+# paho mqtt 2.0
+# https://github.com/eclipse/paho.mqtt.python/blob/master/ChangeLog.txt#L1
+# got a few breaking changes
+paho-mqtt<2
+
+# --------- PYTEST ends ---------
+
+# --------- TTFW -------------
+
+# Newer versions of pygobject have a dependency on girepository-2.0. Not even the trixie Debian release has it.
+pygobject<=3.50.0
+
+# --------- TTFW ends --------
+
+# --------- DOCS -------------
+
+esp-docs~=1.5.0
+
+# --------- DOCS ends ---------
+
+# --------- esp_prov -------------
+
+# https://github.com/protocolbuffers/protobuf/issues/10075
+protobuf<=3.20.1
+
+# --------- esp_prov ends ---------

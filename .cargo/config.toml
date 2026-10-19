@@ -1,28 +1,26 @@
 # Cargo Configuration for ESP32 Target Compilation
-# Uncomment or set the default target when cross-compiling for physical ESP32 hardware
 
-[build]
-# Standard dual-core Xtensa ESP32 target (requires esp toolchain / espup):
-# target = "xtensa-esp32-espidf"
-# Alternative for ESP32-C3 / ESP32-C6 RISC-V targets:
-# target = "riscv32imc-esp-espidf"
+[unstable]
+build-std = ["std", "panic_abort"]
 
 [target.xtensa-esp32-espidf]
 linker = "ldproxy"
 runner = "espflash flash --monitor"
 rustflags = [
     "--cfg", "espidf_time_isr",
-    "-C", "default-linker-libraries"
+    "-C", "default-linker-libraries",
+    "-C", "link-arg=--ldproxy-linker=xtensa-esp32-elf-gcc",
 ]
 
 [target.riscv32imc-esp-espidf]
 linker = "ldproxy"
 runner = "espflash flash --monitor"
 rustflags = [
-    "-C", "default-linker-libraries"
+    "-C", "default-linker-libraries",
+    "-C", "link-arg=--ldproxy-linker=riscv32-esp-elf-gcc",
 ]
 
 [env]
-# Default build configurations for esp-idf-sys / embuild
 MCU = "esp32"
-ESP_IDF_VERSION = "v5.1"
+ESP_IDF_VERSION = "v5.2"
+IDF_PYTHON_ENV_PATH = "/home/jae/.local/share/mise/shims/python3.10"
