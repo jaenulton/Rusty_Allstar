@@ -50,7 +50,8 @@ impl Goertzel {
 
     /// Compute relative signal energy after processing a block of samples
     pub fn compute_energy(&self) -> f32 {
-        self.s_prev * self.s_prev + self.s_prev2 * self.s_prev2 - self.coeff * self.s_prev * self.s_prev2
+        self.s_prev * self.s_prev + self.s_prev2 * self.s_prev2
+            - self.coeff * self.s_prev * self.s_prev2
     }
 }
 
@@ -126,21 +127,31 @@ impl DtmfDetector {
 
     fn evaluate(&self) -> Option<char> {
         // Find maximum energy in rows and cols
-        let (best_row, max_row_e) = self.row_filters.iter().enumerate().fold(
-            (0, 0.0f32),
-            |(best_i, max_e), (i, f)| {
-                let e = f.compute_energy();
-                if e > max_e { (i, e) } else { (best_i, max_e) }
-            },
-        );
+        let (best_row, max_row_e) =
+            self.row_filters
+                .iter()
+                .enumerate()
+                .fold((0, 0.0f32), |(best_i, max_e), (i, f)| {
+                    let e = f.compute_energy();
+                    if e > max_e {
+                        (i, e)
+                    } else {
+                        (best_i, max_e)
+                    }
+                });
 
-        let (best_col, max_col_e) = self.col_filters.iter().enumerate().fold(
-            (0, 0.0f32),
-            |(best_i, max_e), (i, f)| {
-                let e = f.compute_energy();
-                if e > max_e { (i, e) } else { (best_i, max_e) }
-            },
-        );
+        let (best_col, max_col_e) =
+            self.col_filters
+                .iter()
+                .enumerate()
+                .fold((0, 0.0f32), |(best_i, max_e), (i, f)| {
+                    let e = f.compute_energy();
+                    if e > max_e {
+                        (i, e)
+                    } else {
+                        (best_i, max_e)
+                    }
+                });
 
         // Thresholding and twist ratio check
         const MIN_ENERGY_THRESHOLD: f32 = 1.0;

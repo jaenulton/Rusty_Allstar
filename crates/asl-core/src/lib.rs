@@ -30,12 +30,12 @@ mod tests {
 
         let mut controller = RepeaterController::new(config);
         assert_eq!(controller.state(), ControllerState::Idle);
-        assert_eq!(controller.is_ptt_active(), false);
+        assert!(!controller.is_ptt_active());
 
         // User keys up
         let action = controller.on_cos_event(true);
         assert_eq!(controller.state(), ControllerState::LocalRx);
-        assert_eq!(controller.is_ptt_active(), true);
+        assert!(controller.is_ptt_active());
         match action {
             Some(Action::SetPtt(true)) => {}
             _ => panic!("Expected SetPtt(true)"),
@@ -56,12 +56,12 @@ mod tests {
         // Advance through courtesy tone into hang time
         controller.tick(150);
         assert_eq!(controller.state(), ControllerState::HangTime);
-        assert_eq!(controller.is_ptt_active(), true);
+        assert!(controller.is_ptt_active());
 
         // Advance beyond hang time
         let action = controller.tick(1100);
         assert_eq!(controller.state(), ControllerState::Idle);
-        assert_eq!(controller.is_ptt_active(), false);
+        assert!(!controller.is_ptt_active());
         match action {
             Some(Action::SetPtt(false)) => {}
             _ => panic!("Expected SetPtt(false)"),

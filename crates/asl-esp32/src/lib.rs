@@ -5,7 +5,7 @@
 //! - Core 0: WiFi networking, NVS config, & IAX2 protocol streaming
 //! - Core 1: I2S DMA audio, Goertzel DSP, and repeater GPIO controller
 
-extern crate alloc;
+#![allow(clippy::result_unit_err, clippy::field_reassign_with_default)]
 
 pub mod audio_queue;
 pub mod gpio_interrupts;

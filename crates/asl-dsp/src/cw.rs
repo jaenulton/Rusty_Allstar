@@ -33,10 +33,22 @@ impl CwGenerator {
         for i in 0..samples.min(out.len()) {
             let mut amp = 1.0f32;
             if i < ramp_samples {
-                amp = 0.5 * (1.0 - micromath::F32(core::f32::consts::PI * (i as f32) / (ramp_samples as f32)).cos().0);
+                amp = 0.5
+                    * (1.0
+                        - micromath::F32(
+                            core::f32::consts::PI * (i as f32) / (ramp_samples as f32),
+                        )
+                        .cos()
+                        .0);
             } else if i > samples.saturating_sub(ramp_samples) {
                 let tail = samples - i;
-                amp = 0.5 * (1.0 - micromath::F32(core::f32::consts::PI * (tail as f32) / (ramp_samples as f32)).cos().0);
+                amp = 0.5
+                    * (1.0
+                        - micromath::F32(
+                            core::f32::consts::PI * (tail as f32) / (ramp_samples as f32),
+                        )
+                        .cos()
+                        .0);
             }
 
             let sample_f = amp * micromath::F32(self.phase).sin().0 * 16384.0;

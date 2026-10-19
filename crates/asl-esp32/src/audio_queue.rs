@@ -26,6 +26,12 @@ pub struct AudioRingBuffer {
     count: usize,
 }
 
+impl Default for AudioRingBuffer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AudioRingBuffer {
     pub const fn new() -> Self {
         Self {

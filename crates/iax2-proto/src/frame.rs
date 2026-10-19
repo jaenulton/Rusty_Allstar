@@ -1,8 +1,8 @@
 //! IAX2 Frame Definitions and Zero-Copy Parsers (RFC 5456)
 
-use core::fmt;
 use crate::constants::FrameType;
 use crate::ie::IeIterator;
+use core::fmt;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ParseError {

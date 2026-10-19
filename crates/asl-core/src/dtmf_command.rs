@@ -1,3 +1,4 @@
+#![allow(clippy::manual_strip)]
 //! AllStarLink / app_rpt DTMF Command Processor & Telemetry Dispatcher
 //!
 //! Parses incoming DTMF digit streams into AllStarLink control commands:
@@ -128,7 +129,9 @@ impl DtmfCommandProcessor {
             if remainder.is_empty() || remainder == "0" {
                 return Some(DtmfCommand::Disconnect { target_node: None });
             } else if let Ok(node) = remainder.parse::<u32>() {
-                return Some(DtmfCommand::Disconnect { target_node: Some(node) });
+                return Some(DtmfCommand::Disconnect {
+                    target_node: Some(node),
+                });
             }
         }
         // Monitor connect: *2<node>
@@ -175,7 +178,10 @@ mod tests {
 
         assert_eq!(proc.push_digit('*'), None);
         assert_eq!(proc.push_digit('1'), None);
-        assert_eq!(proc.push_digit('0'), Some(DtmfCommand::Disconnect { target_node: None }));
+        assert_eq!(
+            proc.push_digit('0'),
+            Some(DtmfCommand::Disconnect { target_node: None })
+        );
     }
 
     #[test]
@@ -192,7 +198,10 @@ mod tests {
 
         // Advance another 600ms (total 1100ms >= 1000ms timeout)
         let cmd = proc.tick(600);
-        assert_eq!(cmd, Some(DtmfCommand::ConnectTransceive { target_node: 50000 }));
+        assert_eq!(
+            cmd,
+            Some(DtmfCommand::ConnectTransceive { target_node: 50000 })
+        );
         assert_eq!(proc.current_buffer(), "");
     }
 
@@ -205,7 +214,12 @@ mod tests {
         }
 
         let cmd = proc.tick(600);
-        assert_eq!(cmd, Some(DtmfCommand::Disconnect { target_node: Some(2000) }));
+        assert_eq!(
+            cmd,
+            Some(DtmfCommand::Disconnect {
+                target_node: Some(2000)
+            })
+        );
     }
 
     #[test]

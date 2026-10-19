@@ -1,3 +1,4 @@
+#![allow(clippy::result_unit_err, clippy::field_reassign_with_default)]
 //! Rusty_Allstar ESP32 Firmware Entry Point
 //!
 //! Dual-Core FreeRTOS execution:
@@ -60,7 +61,11 @@ impl MicroNodeFirmware {
             nvs,
             i2s_driver: I2sHardwareDriver::new(pins, i2s_config),
             sa818_config,
-            gpio_ctrl: GpioInterruptController::new(pins.gpio_cos as u8, pins.gpio_ptt as u8, pins.cos_active_low),
+            gpio_ctrl: GpioInterruptController::new(
+                pins.gpio_cos as u8,
+                pins.gpio_ptt as u8,
+                pins.cos_active_low,
+            ),
             repeater: RepeaterController::new(repeater_config),
             pins,
             rx_ring_buffer: AudioRingBuffer::new(),
@@ -125,7 +130,10 @@ fn main() {
     println!("=== Rusty_Allstar ESP32 Firmware Starting ===");
     let mut firmware = MicroNodeFirmware::new();
     firmware.boot().expect("Firmware boot failed");
-    println!("Firmware booted successfully! Node ID: {}", firmware.nvs.asl_node);
+    println!(
+        "Firmware booted successfully! Node ID: {}",
+        firmware.nvs.asl_node
+    );
 
     // Run test cycle
     firmware.core1_audio_tick();
@@ -146,6 +154,6 @@ mod tests {
         // Test Core 1 and Core 0 tick execution
         fw.core1_audio_tick();
         fw.core0_network_tick();
-        assert_eq!(fw.gpio_ctrl.ptt_is_keyed, false);
+        assert!(!fw.gpio_ctrl.ptt_is_keyed);
     }
 }

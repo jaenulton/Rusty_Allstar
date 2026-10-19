@@ -123,12 +123,12 @@ mod tests {
 
         // 1. Silent cycle in idle
         engine.process_cycle(&rx_in, &mut tx_out, &mut in_queue, &mut out_queue);
-        assert_eq!(engine.radio_gpio.ptt_state, false);
+        assert!(!engine.radio_gpio.ptt_state);
 
         // 2. User keys up on RF
         engine.radio_gpio.cos_state = true;
         engine.process_cycle(&rx_in, &mut tx_out, &mut in_queue, &mut out_queue);
-        assert_eq!(engine.radio_gpio.ptt_state, true);
+        assert!(engine.radio_gpio.ptt_state);
         assert_eq!(out_queue.len(), 1); // Encoded u-law pushed to network queue
     }
 }

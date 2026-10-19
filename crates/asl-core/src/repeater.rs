@@ -29,11 +29,11 @@ pub struct RepeaterConfig {
 impl Default for RepeaterConfig {
     fn default() -> Self {
         Self {
-            timeout_timer_ms: 180_000,    // 3 minutes
-            hang_time_ms: 1_500,          // 1.5 seconds
-            courtesy_tone_delay_ms: 200,  // 200 ms
+            timeout_timer_ms: 180_000,   // 3 minutes
+            hang_time_ms: 1_500,         // 1.5 seconds
+            courtesy_tone_delay_ms: 200, // 200 ms
             callsign: "N0CALL",
-            id_interval_ms: 600_000,      // 10 minutes
+            id_interval_ms: 600_000, // 10 minutes
         }
     }
 }
@@ -127,6 +127,7 @@ impl RepeaterController {
     }
 
     /// Advance time by `delta_ms` (called periodically by timer tick or loop)
+    #[allow(clippy::collapsible_match)]
     pub fn tick(&mut self, delta_ms: u32) -> Option<Action> {
         self.state_elapsed_ms += delta_ms;
         self.last_id_elapsed_ms += delta_ms;

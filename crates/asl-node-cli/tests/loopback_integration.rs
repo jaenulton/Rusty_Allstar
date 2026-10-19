@@ -1,3 +1,4 @@
+#![allow(clippy::collapsible_match)]
 //! Two-Node End-to-End Loopback Integration Test
 //!
 //! Spawns two independent virtual ASL nodes on localhost UDP ports:
@@ -102,8 +103,13 @@ async fn test_two_node_loopback_handshake_and_voice() {
         let mut recv_buf = [0u8; 1500];
 
         // 1. Send NEW to Node 1
-        let len = session.build_new("1999", "2000", "node2000", &mut send_buf).unwrap();
-        sock_node2.send_to(&send_buf[..len], node1_addr).await.unwrap();
+        let len = session
+            .build_new("1999", "2000", "node2000", &mut send_buf)
+            .unwrap();
+        sock_node2
+            .send_to(&send_buf[..len], node1_addr)
+            .await
+            .unwrap();
 
         // 2. Wait for ACCEPT
         let (n, _) = sock_node2.recv_from(&mut recv_buf).await.unwrap();
@@ -116,7 +122,10 @@ async fn test_two_node_loopback_handshake_and_voice() {
 
                 // Send ACK
                 let ack_len = session.build_ack(full.timestamp, &mut send_buf).unwrap();
-                sock_node2.send_to(&send_buf[..ack_len], node1_addr).await.unwrap();
+                sock_node2
+                    .send_to(&send_buf[..ack_len], node1_addr)
+                    .await
+                    .unwrap();
             }
             _ => panic!("Expected Full Frame ACCEPT"),
         }
@@ -125,8 +134,13 @@ async fn test_two_node_loopback_handshake_and_voice() {
         let voice_sample = [0x55u8; 160];
         for _ in 0..5 {
             session.advance_time(20);
-            let len = session.build_voice_mini(&voice_sample, &mut send_buf).unwrap();
-            sock_node2.send_to(&send_buf[..len], node1_addr).await.unwrap();
+            let len = session
+                .build_voice_mini(&voice_sample, &mut send_buf)
+                .unwrap();
+            sock_node2
+                .send_to(&send_buf[..len], node1_addr)
+                .await
+                .unwrap();
             sleep(Duration::from_millis(20)).await;
         }
 
@@ -146,7 +160,10 @@ async fn test_two_node_loopback_handshake_and_voice() {
             };
             session.o_seqno = session.o_seqno.wrapping_add(1);
             let len = dtmf_frame.serialize(&mut send_buf).unwrap();
-            sock_node2.send_to(&send_buf[..len], node1_addr).await.unwrap();
+            sock_node2
+                .send_to(&send_buf[..len], node1_addr)
+                .await
+                .unwrap();
             sleep(Duration::from_millis(25)).await;
         }
     });
@@ -155,6 +172,14 @@ async fn test_two_node_loopback_handshake_and_voice() {
     client_res.expect("client finished cleanly");
     let (voice_frames, dtmf_cmd) = listener_res.expect("listener finished cleanly");
 
-    assert!(voice_frames >= 3, "Expected at least 3 voice frames, got {}", voice_frames);
-    assert_eq!(dtmf_cmd, Some(DtmfCommand::SystemStatus), "Expected *70 DTMF command");
+    assert!(
+        voice_frames >= 3,
+        "Expected at least 3 voice frames, got {}",
+        voice_frames
+    );
+    assert_eq!(
+        dtmf_cmd,
+        Some(DtmfCommand::SystemStatus),
+        "Expected *70 DTMF command"
+    );
 }

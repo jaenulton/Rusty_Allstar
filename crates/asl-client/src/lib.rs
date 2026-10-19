@@ -27,7 +27,9 @@ mod tests {
         let mut buf = [0u8; 256];
 
         // 1. Build NEW
-        let len = session.build_new("50000", "50001", "node50001", &mut buf).unwrap();
+        let len = session
+            .build_new("50000", "50001", "node50001", &mut buf)
+            .unwrap();
         assert_eq!(session.state, SessionState::Connecting);
         assert_eq!(session.o_seqno, 1);
 

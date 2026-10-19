@@ -34,19 +34,21 @@ mod tests {
         };
 
         let mut buffer = [0u8; 64];
-        let written = original.serialize(&mut buffer).expect("serialization failed");
+        let written = original
+            .serialize(&mut buffer)
+            .expect("serialization failed");
         assert_eq!(written, FullFrame::HEADER_SIZE + payload.len());
 
         let parsed = FullFrame::parse(&buffer[..written]).expect("parse failed");
         assert_eq!(parsed.source_call, 101);
         assert_eq!(parsed.dest_call, 202);
-        assert_eq!(parsed.retransmission, false);
+        assert!(!parsed.retransmission);
         assert_eq!(parsed.timestamp, 123456);
         assert_eq!(parsed.o_seqno, 1);
         assert_eq!(parsed.i_seqno, 2);
         assert_eq!(parsed.frame_type, FrameType::Iax);
         assert_eq!(parsed.subclass, IaxCommand::New.into());
-        assert_eq!(parsed.c_bit, false);
+        assert!(!parsed.c_bit);
         assert_eq!(parsed.payload, &payload);
     }
 
@@ -79,8 +81,7 @@ mod tests {
         // IE: CALLED_NUMBER (1), len 4: "1234"
         // IE: USERNAME (6), len 5: "node1"
         let raw_ies: [u8; 13] = [
-            1, 4, b'1', b'2', b'3', b'4',
-            6, 5, b'n', b'o', b'd', b'e', b'1',
+            1, 4, b'1', b'2', b'3', b'4', 6, 5, b'n', b'o', b'd', b'e', b'1',
         ];
 
         let mut iter = IeIterator::new(&raw_ies);

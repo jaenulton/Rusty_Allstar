@@ -78,7 +78,7 @@ mod tests {
         // Zero
         let enc0 = linear_to_ulaw(0);
         let dec0 = ulaw_to_linear(enc0);
-        assert!((dec0 - 0).abs() < 10);
+        assert!(dec0.abs() < 10);
 
         // Typical voice amplitude
         let val = 12000i16;

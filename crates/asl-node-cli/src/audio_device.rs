@@ -1,3 +1,4 @@
+#![allow(clippy::needless_range_loop)]
 //! Host sound card audio I/O using CPAL for `asl-node-cli`.
 //!
 //! Captures microphone audio, downsamples/converts to 8 kHz 16-bit mono PCM,
@@ -38,7 +39,8 @@ impl AudioSubsystem {
                 channels
             );
 
-            let audio_buffer = Arc::new(Mutex::new(Vec::<f32>::with_capacity(sample_rate as usize)));
+            let audio_buffer =
+                Arc::new(Mutex::new(Vec::<f32>::with_capacity(sample_rate as usize)));
             let buf_clone = audio_buffer.clone();
 
             // Background task feeding speaker frames to ring buffer
@@ -65,7 +67,11 @@ impl AudioSubsystem {
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                     let mut lock = play_buf.lock().unwrap();
                     for frame in data.chunks_mut(channels) {
-                        let s = if !lock.is_empty() { lock.remove(0) } else { 0.0 };
+                        let s = if !lock.is_empty() {
+                            lock.remove(0)
+                        } else {
+                            0.0
+                        };
                         for sample in frame.iter_mut() {
                             *sample = s;
                         }
@@ -94,7 +100,9 @@ impl AudioSubsystem {
                 in_channels
             );
 
-            let mic_buffer = Arc::new(Mutex::new(Vec::<f32>::with_capacity(in_sample_rate as usize)));
+            let mic_buffer = Arc::new(Mutex::new(Vec::<f32>::with_capacity(
+                in_sample_rate as usize,
+            )));
             let mic_buf_clone = mic_buffer.clone();
 
             tokio::spawn(async move {

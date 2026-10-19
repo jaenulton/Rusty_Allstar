@@ -4,7 +4,6 @@
 //! applying N-1 subtraction (or source exclusion) so participants do not hear their own echo,
 //! and soft-limiting (tanh-like distortion curve) to prevent digital harsh clipping.
 
-
 pub const SAMPLES_PER_FRAME: usize = 160; // 20ms @ 8 kHz
 
 /// Soft-clip a 32-bit accumulated audio sample into the 16-bit dynamic range (-32768..=32767).
@@ -21,7 +20,8 @@ pub fn soft_clip(sample: i32) -> i16 {
     } else {
         // Smooth knee above threshold
         let excess = abs_s - THRESHOLD;
-        let compressed = THRESHOLD + (excess * (MAX_PEAK - THRESHOLD)) / (excess + (MAX_PEAK - THRESHOLD));
+        let compressed =
+            THRESHOLD + (excess * (MAX_PEAK - THRESHOLD)) / (excess + (MAX_PEAK - THRESHOLD));
         if sample > 0 {
             compressed.min(32767) as i16
         } else {
@@ -52,6 +52,7 @@ impl AudioMixer {
     /// Mix multiple incoming participant streams together.
     /// Writes each participant's customized mix (all active audio *except* their own)
     /// into the provided `outputs` buffer.
+    #[allow(clippy::needless_range_loop)]
     pub fn mix_n_minus_one(
         &mut self,
         sources: &[AudioStreamSource],
@@ -70,7 +71,9 @@ impl AudioMixer {
         // 2. Generate customized N-1 mix for each output channel
         for (target_call_id, out_buf) in outputs.iter_mut() {
             // Find target's own input to subtract out
-            let own_src = sources.iter().find(|s| s.call_id == *target_call_id && s.active);
+            let own_src = sources
+                .iter()
+                .find(|s| s.call_id == *target_call_id && s.active);
 
             for i in 0..SAMPLES_PER_FRAME {
                 let mut sum = self.accumulator[i];
@@ -83,7 +86,12 @@ impl AudioMixer {
     }
 
     /// Simple master mix of all active streams (e.g. for local transmitter or monitor)
-    pub fn mix_master(&mut self, sources: &[AudioStreamSource], master_out: &mut [i16; SAMPLES_PER_FRAME]) {
+    #[allow(clippy::needless_range_loop)]
+    pub fn mix_master(
+        &mut self,
+        sources: &[AudioStreamSource],
+        master_out: &mut [i16; SAMPLES_PER_FRAME],
+    ) {
         self.accumulator.fill(0);
         for src in sources.iter() {
             if src.active {

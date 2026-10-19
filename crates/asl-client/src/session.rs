@@ -53,9 +53,17 @@ impl CallSession {
         let mut ie_len = 0;
 
         // CALLED_NUMBER
-        ie_len += write_ie(IeType::CalledNumber, called_node.as_bytes(), &mut ie_buf[ie_len..])?;
+        ie_len += write_ie(
+            IeType::CalledNumber,
+            called_node.as_bytes(),
+            &mut ie_buf[ie_len..],
+        )?;
         // CALLING_NUMBER
-        ie_len += write_ie(IeType::CallingNumber, calling_node.as_bytes(), &mut ie_buf[ie_len..])?;
+        ie_len += write_ie(
+            IeType::CallingNumber,
+            calling_node.as_bytes(),
+            &mut ie_buf[ie_len..],
+        )?;
         // USERNAME
         ie_len += write_ie(IeType::Username, username.as_bytes(), &mut ie_buf[ie_len..])?;
         // FORMAT = G.711 u-law (4 bytes)

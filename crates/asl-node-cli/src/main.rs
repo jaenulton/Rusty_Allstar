@@ -1,8 +1,13 @@
+#![allow(
+    clippy::too_many_arguments,
+    clippy::needless_range_loop,
+    clippy::field_reassign_with_default
+)]
 //! Rusty_Allstar CLI Node & Testbed Runner with Embedded Web UI and Real-Time Audio
 
 pub mod audio_device;
-pub mod web_server;
 pub mod tui;
+pub mod web_server;
 
 use clap::{Parser, Subcommand};
 use std::net::SocketAddr;
@@ -14,7 +19,10 @@ use tracing::{error, info, warn};
 
 use asl_client::{resolve_asl_node, CallSession, SessionState};
 use asl_core::{Action, RepeaterConfig, RepeaterController};
-use asl_dsp::{decode_ulaw_slice, encode_ulaw_slice, CwGenerator, DtmfDetector, JitterBuffer, JitterBufferConfig};
+use asl_dsp::{
+    decode_ulaw_slice, encode_ulaw_slice, CwGenerator, DtmfDetector, JitterBuffer,
+    JitterBufferConfig,
+};
 use iax2_proto::constants::{FrameType, IaxCommand};
 use iax2_proto::frame::{Frame, FullFrame};
 
@@ -107,9 +115,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             live_mic,
             tone,
         } => {
-            run_connect_client(target_node, host, my_node, password, bind, web_port, live_mic, tone).await?;
+            run_connect_client(
+                target_node,
+                host,
+                my_node,
+                password,
+                bind,
+                web_port,
+                live_mic,
+                tone,
+            )
+            .await?;
         }
-        Commands::Listen { bind, callsign, web_port } => {
+        Commands::Listen {
+            bind,
+            callsign,
+            web_port,
+        } => {
             run_listener(bind, callsign, web_port).await?;
         }
         Commands::DspTest => {
@@ -135,11 +157,17 @@ async fn run_connect_client(
         Some(h) => h,
         None => {
             let node_num: u32 = target_node.parse().map_err(|_| {
-                format!("Invalid target node number '{}' for DNS resolution", target_node)
+                format!(
+                    "Invalid target node number '{}' for DNS resolution",
+                    target_node
+                )
             })?;
             match resolve_asl_node(node_num) {
                 Some(loc) => {
-                    info!("Resolved AllStarLink node {} -> {}", node_num, loc.socket_addr);
+                    info!(
+                        "Resolved AllStarLink node {} -> {}",
+                        node_num, loc.socket_addr
+                    );
                     loc.socket_addr
                 }
                 None => {
@@ -195,7 +223,10 @@ async fn run_connect_client(
                 Some(s)
             }
             Err(e) => {
-                warn!("Could not start host audio I/O (running in headless mode): {:?}", e);
+                warn!(
+                    "Could not start host audio I/O (running in headless mode): {:?}",
+                    e
+                );
                 None
             }
         }
@@ -212,7 +243,10 @@ async fn run_connect_client(
     // Build and send initial NEW frame
     let len = session.build_new(&target_node, &my_node, &my_node, &mut send_buf)?;
     socket.send_to(&send_buf[..len], host).await?;
-    info!("Sent IAX2 NEW frame (call {}) to {}", session.local_call_no, host);
+    info!(
+        "Sent IAX2 NEW frame (call {}) to {}",
+        session.local_call_no, host
+    );
 
     let mut recv_buf = [0u8; 1500];
     let mut frame_timer = interval(Duration::from_millis(20));
@@ -347,9 +381,16 @@ async fn run_connect_client(
     }
 }
 
-async fn run_listener(bind: SocketAddr, callsign: String, web_port: u16) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_listener(
+    bind: SocketAddr,
+    callsign: String,
+    web_port: u16,
+) -> Result<(), Box<dyn std::error::Error>> {
     let socket = Arc::new(UdpSocket::bind(bind).await?);
-    info!("Rusty_Allstar listening for incoming connections on {}", socket.local_addr()?);
+    info!(
+        "Rusty_Allstar listening for incoming connections on {}",
+        socket.local_addr()?
+    );
 
     let (cmd_tx, _cmd_rx) = mpsc::channel::<NodeCommand>(32);
 

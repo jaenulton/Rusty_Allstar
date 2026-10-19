@@ -1,44 +1,49 @@
-//! Mock Hardware Radio Interface & SA818 Transceiver Emulator
+#![allow(clippy::manual_strip)]
+//! Mock NiceRF SA818 Transceiver & RF Environment Emulator
 //!
-//! Provides an in-memory simulated RF channel and SA818 module for desktop
-//! testing, QEMU simulations, and automated testing environments.
+//! Emulates serial AT command interactions, carrier detection, and PTT actuation
+//! for automated headless desktop testing and simulation.
 
-use alloc::string::String;
-use alloc::vec::Vec;
+use std::string::String;
+use std::vec::Vec;
 
-/// Mock RF Channel state
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MockRadioState {
     pub connected: bool,
-    pub tx_freq_hz: u32,
-    pub rx_freq_hz: u32,
-    pub tx_ctcss_hz: f32,
-    pub rx_ctcss_hz: f32,
-    pub squelch_level: u8,
+    pub tx_freq: String,
+    pub rx_freq: String,
+    pub tx_ctcss: String,
+    pub rx_ctcss: String,
+    pub squelch: u8,
+    pub volume: u8,
+    pub ptt_active: bool,
     pub rf_carrier_detected: bool,
-    pub transmitter_keyed: bool,
-    pub command_log: Vec<String>,
 }
 
 impl Default for MockRadioState {
     fn default() -> Self {
         Self {
             connected: false,
-            tx_freq_hz: 446_000_000,
-            rx_freq_hz: 446_000_000,
-            tx_ctcss_hz: 100.0,
-            rx_ctcss_hz: 100.0,
-            squelch_level: 4,
+            tx_freq: "446.0000".to_string(),
+            rx_freq: "446.0000".to_string(),
+            tx_ctcss: "0100".to_string(),
+            rx_ctcss: "0100".to_string(),
+            squelch: 4,
+            volume: 5,
+            ptt_active: false,
             rf_carrier_detected: false,
-            transmitter_keyed: false,
-            command_log: Vec::new(),
         }
     }
 }
 
-/// Simulated SA818 Transceiver Emulator
 pub struct MockSa818Emulator {
-    state: MockRadioState,
+    pub state: MockRadioState,
+}
+
+impl Default for MockSa818Emulator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MockSa818Emulator {
@@ -48,39 +53,46 @@ impl MockSa818Emulator {
         }
     }
 
-    /// Process an inbound AT command line string and return the SA818 response
-    pub fn handle_at_command(&mut self, cmd: &str) -> &'static str {
+    /// Processes an incoming serial AT command and returns the simulated response string
+    pub fn process_at_command(&mut self, cmd: &str) -> String {
         let trimmed = cmd.trim();
-        self.state.command_log.push(String::from(trimmed));
-
         if trimmed == "AT+DMOCONNECT" {
             self.state.connected = true;
-            "+DMOCONNECT:0\r\n"
+            "+DMOCONNECT:0\r\n".to_string()
         } else if trimmed.starts_with("AT+DMOSETGROUP=") {
-            // e.g. AT+DMOSETGROUP=0,446.0000,446.0000,100.0,4,100.0
-            self.state.connected = true;
-            "+DMOSETGROUP:0\r\n"
+            let params = &trimmed["AT+DMOSETGROUP=".len()..];
+            let parts: Vec<&str> = params.split(',').collect();
+            if parts.len() == 6 {
+                self.state.tx_freq = parts[1].to_string();
+                self.state.rx_freq = parts[2].to_string();
+                self.state.tx_ctcss = parts[3].to_string();
+                if let Ok(sq) = parts[4].parse::<u8>() {
+                    self.state.squelch = sq;
+                }
+                self.state.rx_ctcss = parts[5].to_string();
+                "+DMOSETGROUP:0\r\n".to_string()
+            } else {
+                "+DMOSETGROUP:1\r\n".to_string()
+            }
         } else if trimmed.starts_with("AT+DMOSETVOLUME=") {
-            "+DMOSETVOLUME:0\r\n"
-        } else if trimmed.starts_with("AT+SETFILTER=") {
-            "+DMOSETFILTER:0\r\n"
+            let vol_str = &trimmed["AT+DMOSETVOLUME=".len()..];
+            if let Ok(vol) = vol_str.parse::<u8>() {
+                self.state.volume = vol;
+                "+DMOSETVOLUME:0\r\n".to_string()
+            } else {
+                "+DMOSETVOLUME:1\r\n".to_string()
+            }
         } else {
-            "+DMOERROR\r\n"
+            "ERROR\r\n".to_string()
         }
     }
 
-    /// Set simulated RF carrier presence (triggers COS active/inactive)
-    pub fn set_rf_carrier(&mut self, carrier_present: bool) {
-        self.state.rf_carrier_detected = carrier_present;
+    pub fn set_rf_carrier(&mut self, detected: bool) {
+        self.state.rf_carrier_detected = detected;
     }
 
-    /// Set simulated PTT transmitter key state
-    pub fn set_ptt(&mut self, active: bool) {
-        self.state.transmitter_keyed = active;
-    }
-
-    pub fn state(&self) -> &MockRadioState {
-        &self.state
+    pub fn set_ptt(&mut self, keyed: bool) {
+        self.state.ptt_active = keyed;
     }
 }
 
@@ -91,27 +103,29 @@ mod tests {
     #[test]
     fn test_mock_sa818_at_handshake() {
         let mut radio = MockSa818Emulator::new();
-        assert!(!radio.state().connected);
+        assert!(!radio.state.connected);
 
-        let resp = radio.handle_at_command("AT+DMOCONNECT\r\n");
+        let resp = radio.process_at_command("AT+DMOCONNECT\r\n");
         assert_eq!(resp, "+DMOCONNECT:0\r\n");
-        assert!(radio.state().connected);
+        assert!(radio.state.connected);
 
-        let resp = radio.handle_at_command("AT+DMOSETGROUP=0,446.0000,446.0000,100.0,4,100.0\r\n");
-        assert_eq!(resp, "+DMOSETGROUP:0\r\n");
-        assert_eq!(radio.state().command_log.len(), 2);
+        let group_resp =
+            radio.process_at_command("AT+DMOSETGROUP=0,146.5200,146.5200,0100,3,0100\r\n");
+        assert_eq!(group_resp, "+DMOSETGROUP:0\r\n");
+        assert_eq!(radio.state.tx_freq, "146.5200");
+        assert_eq!(radio.state.squelch, 3);
     }
 
     #[test]
     fn test_mock_rf_carrier_and_ptt() {
         let mut radio = MockSa818Emulator::new();
-        assert!(!radio.state().rf_carrier_detected);
-        assert!(!radio.state().transmitter_keyed);
+        assert!(!radio.state.rf_carrier_detected);
+        assert!(!radio.state.ptt_active);
 
         radio.set_rf_carrier(true);
-        assert!(radio.state().rf_carrier_detected);
+        assert!(radio.state.rf_carrier_detected);
 
         radio.set_ptt(true);
-        assert!(radio.state().transmitter_keyed);
+        assert!(radio.state.ptt_active);
     }
 }

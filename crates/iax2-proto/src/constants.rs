@@ -182,8 +182,8 @@ impl From<IaxCommand> for u8 {
 pub mod audio_format {
     pub const G723_1: u32 = 1 << 0;
     pub const GSM: u32 = 1 << 1;
-    pub const ULAW: u32 = 1 << 2;  // G.711 μ-law (Standard AllStar default)
-    pub const ALAW: u32 = 1 << 3;  // G.711 A-law
+    pub const ULAW: u32 = 1 << 2; // G.711 μ-law (Standard AllStar default)
+    pub const ALAW: u32 = 1 << 3; // G.711 A-law
     pub const G726: u32 = 1 << 4;
     pub const ADPCM: u32 = 1 << 5;
     pub const SLINEAR: u32 = 1 << 6;

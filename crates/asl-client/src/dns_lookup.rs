@@ -62,7 +62,10 @@ mod tests {
 
     #[test]
     fn test_asl_node_hostname_formatting() {
-        assert_eq!(format_asl_node_hostname(50000), "50000.nodes.allstarlink.org");
+        assert_eq!(
+            format_asl_node_hostname(50000),
+            "50000.nodes.allstarlink.org"
+        );
         assert_eq!(format_asl_node_hostname(2521), "2521.nodes.allstarlink.org");
     }
 
@@ -76,6 +79,9 @@ mod tests {
     fn test_resolve_asl_node() {
         // Known stub node
         let loc = resolve_asl_node(1999).expect("expected node 1999");
-        assert_eq!(loc.socket_addr.ip(), IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
+        assert_eq!(
+            loc.socket_addr.ip(),
+            IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))
+        );
     }
 }

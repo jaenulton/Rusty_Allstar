@@ -41,13 +41,19 @@ pub struct AppState {
 
 #[derive(Debug)]
 pub enum NodeCommand {
-    Connect { target_node: String, host: Option<String> },
+    Connect {
+        target_node: String,
+        host: Option<String>,
+    },
     Disconnect,
     SendDtmf(char),
     ForceCwId,
 }
 
-pub async fn start_web_server(addr: SocketAddr, state: AppState) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn start_web_server(
+    addr: SocketAddr,
+    state: AppState,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let app = Router::new()
         .route("/", get(serve_dashboard))
         .route("/ws", get(ws_telemetry_handler))
@@ -60,7 +66,10 @@ pub async fn start_web_server(addr: SocketAddr, state: AppState) -> Result<(), B
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    info!("Embedded Web Dashboard & REST API listening on http://{}", addr);
+    info!(
+        "Embedded Web Dashboard & REST API listening on http://{}",
+        addr
+    );
 
     axum::serve(listener, app).await?;
     Ok(())
@@ -70,10 +79,7 @@ async fn serve_dashboard() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, MIME_HTML)], Html(INDEX_HTML))
 }
 
-async fn ws_telemetry_handler(
-    ws: WebSocketUpgrade,
-    State(state): State<AppState>,
-) -> Response {
+async fn ws_telemetry_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> Response {
     ws.on_upgrade(move |socket| handle_ws_socket(socket, state))
 }
 
@@ -159,7 +165,12 @@ async fn post_connect(
 async fn post_disconnect(
     State(state): State<AppState>,
 ) -> Result<Json<ApiResponse>, (StatusCode, Json<ApiResponse>)> {
-    if state.command_tx.send(NodeCommand::Disconnect).await.is_err() {
+    if state
+        .command_tx
+        .send(NodeCommand::Disconnect)
+        .await
+        .is_err()
+    {
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ApiResponse {
@@ -180,7 +191,12 @@ async fn post_dtmf(
     Json(payload): Json<DtmfRequest>,
 ) -> Result<Json<ApiResponse>, (StatusCode, Json<ApiResponse>)> {
     let digit = payload.digit;
-    if state.command_tx.send(NodeCommand::SendDtmf(digit)).await.is_err() {
+    if state
+        .command_tx
+        .send(NodeCommand::SendDtmf(digit))
+        .await
+        .is_err()
+    {
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ApiResponse {

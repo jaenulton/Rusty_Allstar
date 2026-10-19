@@ -1,0 +1,52 @@
+name: Rusty_Allstar CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test Workspace & Lints
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Install Linux ALSA Audio Development Headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev
+
+      - name: Rustfmt Check
+        run: cargo fmt --all -- --check
+
+      - name: Clippy Linting
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run Test Suite
+        run: cargo test --workspace --verbose
+
+  build-release-binaries:
+    name: Build Desktop Release Binary
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      - run: cargo build --package asl-node-cli --release
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: asl-node-cli-linux-x86_64
+          path: target/release/asl-node-cli

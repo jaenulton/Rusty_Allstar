@@ -1,3 +1,4 @@
+#![allow(clippy::field_reassign_with_default)]
 //! Interactive Terminal User Interface (TUI) Dashboard for Rusty_Allstar Node
 //!
 //! Renders real-time telemetry, COS / PTT indicators, audio VU meter, and node state
@@ -72,12 +73,24 @@ impl TerminalRenderer {
         out.push_str("┌────────────────────────────────────────────────────────┐\n");
         out.push_str("│          📻  RUSTY_ALLSTAR CONSOLE DASHBOARD           │\n");
         out.push_str("├────────────────────────────┬───────────────────────────┤\n");
-        out.push_str(&format!("│ Callsign:   {:<14} │ Local Node: {:<13} │\n", state.callsign, state.local_node));
-        out.push_str(&format!("│ Link State: {:<14} │ Target:     {:<13} │\n", state.link_state, target_str));
-        out.push_str(&format!("│ Transceiver:{:<14} │ Squelch:    Level {:<7} │\n", state.rf_freq, state.squelch_level));
+        out.push_str(&format!(
+            "│ Callsign:   {:<14} │ Local Node: {:<13} │\n",
+            state.callsign, state.local_node
+        ));
+        out.push_str(&format!(
+            "│ Link State: {:<14} │ Target:     {:<13} │\n",
+            state.link_state, target_str
+        ));
+        out.push_str(&format!(
+            "│ Transceiver:{:<14} │ Squelch:    Level {:<7} │\n",
+            state.rf_freq, state.squelch_level
+        ));
         out.push_str("├────────────────────────────┴───────────────────────────┤\n");
         out.push_str(&format!("│ Status: {}   {} │\n", cos_badge, ptt_badge));
-        out.push_str(&format!("│ Audio:  [{}] {:>3}%                      │\n", vu_meter, state.audio_peak_pct));
+        out.push_str(&format!(
+            "│ Audio:  [{}] {:>3}%                      │\n",
+            vu_meter, state.audio_peak_pct
+        ));
         out.push_str("└────────────────────────────────────────────────────────┘\n");
 
         out

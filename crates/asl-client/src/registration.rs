@@ -27,7 +27,12 @@ pub struct RegistrationClient {
 }
 
 impl RegistrationClient {
-    pub fn new(node_number: &'static str, password: &'static str, refresh_secs: u16, local_call_no: u16) -> Self {
+    pub fn new(
+        node_number: &'static str,
+        password: &'static str,
+        refresh_secs: u16,
+        local_call_no: u16,
+    ) -> Self {
         Self {
             node_number,
             password,
@@ -47,7 +52,11 @@ impl RegistrationClient {
         let mut ie_len = 0;
 
         // USERNAME = node number
-        ie_len += write_ie(IeType::Username, self.node_number.as_bytes(), &mut ie_buf[ie_len..])?;
+        ie_len += write_ie(
+            IeType::Username,
+            self.node_number.as_bytes(),
+            &mut ie_buf[ie_len..],
+        )?;
         // REFRESH = refresh_secs (2 bytes BE)
         let refresh_bytes = self.refresh_secs.to_be_bytes();
         ie_len += write_ie(IeType::Refresh, &refresh_bytes, &mut ie_buf[ie_len..])?;
@@ -71,13 +80,21 @@ impl RegistrationClient {
     }
 
     /// Build authenticated `REGREQ` response after receiving `REGAUTH` challenge
-    pub fn build_reg_auth_response(&mut self, challenge: &str, out: &mut [u8]) -> Result<usize, ParseError> {
+    pub fn build_reg_auth_response(
+        &mut self,
+        challenge: &str,
+        out: &mut [u8],
+    ) -> Result<usize, ParseError> {
         let md5_hash = compute_md5_response(challenge, self.password);
 
         let mut ie_buf = [0u8; 96];
         let mut ie_len = 0;
 
-        ie_len += write_ie(IeType::Username, self.node_number.as_bytes(), &mut ie_buf[ie_len..])?;
+        ie_len += write_ie(
+            IeType::Username,
+            self.node_number.as_bytes(),
+            &mut ie_buf[ie_len..],
+        )?;
         let refresh_bytes = self.refresh_secs.to_be_bytes();
         ie_len += write_ie(IeType::Refresh, &refresh_bytes, &mut ie_buf[ie_len..])?;
         ie_len += write_ie(IeType::Md5Result, &md5_hash, &mut ie_buf[ie_len..])?;
