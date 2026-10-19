@@ -2,11 +2,13 @@
 //!
 //! Async IAX2 client and session controller for AllStarLink linking and registration.
 
+pub mod astdb;
 pub mod auth;
 pub mod dns_lookup;
 pub mod registration;
 pub mod session;
 
+pub use astdb::{AstDb, AstDbRecord};
 pub use auth::compute_md5_response;
 pub use dns_lookup::{format_asl_node_hostname, resolve_asl_node, resolve_node_stub, NodeLocation};
 pub use registration::{RegAction, RegState, RegistrationClient};

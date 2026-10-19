@@ -1,13 +1,17 @@
-//! Web Server and REST API integration for `asl-node-cli` using Axum.
+//! Web Server, REST API, and WebSocket Telemetry integration for `asl-node-cli` using Axum.
 
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::RwLock;
 
 use axum::{
-    extract::State,
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        State,
+    },
     http::{header, StatusCode},
-    response::{Html, IntoResponse},
+    response::{Html, IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -46,6 +50,7 @@ pub enum NodeCommand {
 pub async fn start_web_server(addr: SocketAddr, state: AppState) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let app = Router::new()
         .route("/", get(serve_dashboard))
+        .route("/ws", get(ws_telemetry_handler))
         .route("/api/status", get(get_status))
         .route("/api/connect", post(post_connect))
         .route("/api/disconnect", post(post_disconnect))
@@ -63,6 +68,39 @@ pub async fn start_web_server(addr: SocketAddr, state: AppState) -> Result<(), B
 
 async fn serve_dashboard() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, MIME_HTML)], Html(INDEX_HTML))
+}
+
+async fn ws_telemetry_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<AppState>,
+) -> Response {
+    ws.on_upgrade(move |socket| handle_ws_socket(socket, state))
+}
+
+async fn handle_ws_socket(mut socket: WebSocket, state: AppState) {
+    let mut interval = tokio::time::interval(Duration::from_millis(50));
+    loop {
+        interval.tick().await;
+
+        let dto = NodeStatusDto {
+            callsign: state.callsign.read().await.clone(),
+            local_node: state.local_node.read().await.clone(),
+            connected_node: state.connected_node.read().await.clone(),
+            state: state.link_state.read().await.clone(),
+            cos_active: *state.cos_active.read().await,
+            ptt_active: *state.ptt_active.read().await,
+            rf_freq: state.rf_freq.read().await.clone(),
+            rf_ctcss: *state.rf_ctcss.read().await,
+            squelch_level: *state.squelch_level.read().await,
+        };
+
+        if let Ok(json_str) = serde_json::to_string(&dto) {
+            if socket.send(Message::Text(json_str)).await.is_err() {
+                // Client disconnected
+                break;
+            }
+        }
+    }
 }
 
 async fn get_status(State(state): State<AppState>) -> Json<NodeStatusDto> {

@@ -67,7 +67,7 @@
       height: 28px;
       border-radius: 50%;
       background: #334155;
-      transition: all 0.2s ease;
+      transition: all 0.1s ease;
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
     }
     .led.cos-active {
@@ -104,138 +104,191 @@
       gap: 0.5rem;
       margin-top: 1rem;
     }
-    .keypad button {
-      background: #273549;
+    .keypad-btn {
+      background: #334155;
       color: var(--text);
-      border: 1px solid var(--border);
-      padding: 0.75rem 0;
       font-size: 1.1rem;
       font-weight: bold;
+      border: 1px solid #475569;
       border-radius: 0.375rem;
+      padding: 0.75rem 0;
       cursor: pointer;
+      transition: all 0.1s ease;
     }
-    .keypad button:active { background: var(--accent); color: #0f172a; }
+    .keypad-btn:active {
+      background: var(--accent);
+      color: #0f172a;
+      transform: scale(0.95);
+    }
     .input-group {
       display: flex;
       gap: 0.5rem;
-      margin-top: 0.75rem;
+      margin-bottom: 1rem;
     }
-    .input-group input {
+    .input-field {
       flex: 1;
       background: #0f172a;
       border: 1px solid var(--border);
+      color: var(--text);
       border-radius: 0.375rem;
-      padding: 0.5rem 0.75rem;
-      color: white;
+      padding: 0.6rem 0.8rem;
       font-family: monospace;
+      font-size: 1rem;
+    }
+    .vu-meter {
+      width: 100%;
+      height: 12px;
+      background: #0f172a;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+      border: 1px solid var(--border);
+    }
+    .vu-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--green) 0%, #eab308 75%, var(--red) 100%);
+      transition: width 0.08s ease;
+    }
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.25rem;
+      font-weight: bold;
+      text-transform: uppercase;
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>📻 Rusty_Allstar Node Controller</h1>
-    <div id="connection-badge" style="color: var(--green); font-weight: bold;">● SYSTEM READY</div>
+    <h1><span>📻</span> Rusty_Allstar Node Controller</h1>
+    <div>
+      <span id="ws-badge" class="badge" style="background: #334155; color: var(--text-muted)">WS CONNECTING</span>
+    </div>
   </div>
 
   <div class="grid">
-    <!-- Live Telemetry Card -->
+    <!-- Live Node Status Card -->
     <div class="card">
-      <div class="card-title">Radio Hardware State</div>
-      <div class="indicators">
-        <div class="indicator">
-          <div id="led-cos" class="led"></div>
-          <span style="font-size: 0.8rem; font-weight: bold;">RX / COS</span>
-        </div>
-        <div class="indicator">
-          <div id="led-ptt" class="led"></div>
-          <span style="font-size: 0.8rem; font-weight: bold;">TX / PTT</span>
-        </div>
-      </div>
+      <div class="card-title">Node Telemetry</div>
       <div class="stat-row">
         <span class="stat-label">Callsign</span>
-        <span id="callsign" class="stat-value">W1AW</span>
+        <span id="callsign" class="stat-value">N0CALL</span>
       </div>
       <div class="stat-row">
         <span class="stat-label">Local Node</span>
         <span id="local-node" class="stat-value">1999</span>
       </div>
       <div class="stat-row">
-        <span class="stat-label">Connected Node</span>
-        <span id="connected-node" class="stat-value" style="color: var(--accent);">DISCONNECTED</span>
+        <span class="stat-label">Active Link</span>
+        <span id="connected-node" class="stat-value">DISCONNECTED</span>
       </div>
       <div class="stat-row">
-        <span class="stat-label">Session State</span>
-        <span id="session-state" class="stat-value">Idle</span>
+        <span class="stat-label">Link State</span>
+        <span id="session-state" class="stat-value">IDLE</span>
+      </div>
+
+      <div class="indicators">
+        <div class="indicator">
+          <div id="led-cos" class="led"></div>
+          <span style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted)">COS (RX)</span>
+        </div>
+        <div class="indicator">
+          <div id="led-ptt" class="led"></div>
+          <span style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted)">PTT (TX)</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 1rem;">
+        <span class="stat-label" style="font-size: 0.8rem;">RX Audio Level</span>
+        <div class="vu-meter"><div id="rx-vu-bar" class="vu-bar"></div></div>
       </div>
     </div>
 
-    <!-- RF Transceiver (SA818) Card -->
+    <!-- RF & Radio Parameters (SA818) -->
     <div class="card">
-      <div class="card-title">RF Transceiver (SA818)</div>
+      <div class="card-title">Transceiver & RF</div>
       <div class="stat-row">
         <span class="stat-label">TX / RX Frequency</span>
         <span id="rf-freq" class="stat-value">446.0000 MHz</span>
       </div>
       <div class="stat-row">
-        <span class="stat-label">CTCSS PL Tone</span>
+        <span class="stat-label">CTCSS Tone</span>
         <span id="rf-ctcss" class="stat-value">100.0 Hz</span>
       </div>
       <div class="stat-row">
-        <span class="stat-label">Squelch Level</span>
-        <span id="rf-sq" class="stat-value">Level 4</span>
+        <span class="stat-label">Squelch Threshold</span>
+        <span id="squelch-lvl" class="stat-value">Level 4</span>
       </div>
       <div class="stat-row">
-        <span class="stat-label">Audio Volume</span>
-        <span id="rf-vol" class="stat-value">5 / 8</span>
+        <span class="stat-label">RF Power Output</span>
+        <span class="stat-value" style="color: var(--green);">1.0 Watt</span>
       </div>
-      <div style="margin-top: 1rem;">
-        <button class="btn" onclick="triggerCwId()">Force Station CW ID</button>
+
+      <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+        <button class="btn" onclick="triggerCwId()" style="flex: 1;">Broadcast CW ID</button>
       </div>
     </div>
 
-    <!-- Link Control Card -->
+    <!-- Audio Monitoring & Virtual Mic Card -->
     <div class="card">
-      <div class="card-title">Node Link Management</div>
-      <div class="stat-label">Connect to AllStar Node Number:</div>
-      <div class="input-group">
-        <input type="text" id="target-node-input" placeholder="e.g. 50000">
-        <button class="btn" onclick="connectNode()">Link</button>
-        <button class="btn btn-danger" onclick="disconnectNode()">Drop</button>
+      <div class="card-title">Live Web Audio</div>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+        Listen to repeater audio directly inside your web browser or talk using your browser microphone / PTT.
+      </p>
+      
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <button id="btn-audio-listen" class="btn" onclick="toggleAudioMonitor()">Enable Web Audio Monitor</button>
+        <button id="btn-web-ptt" class="btn btn-danger" style="user-select: none;" onmousedown="webPttPress()" onmouseup="webPttRelease()" ontouchstart="webPttPress()" ontouchend="webPttRelease()">
+          🎙️ Hold to PTT (Virtual Mic)
+        </button>
       </div>
 
-      <div class="card-title" style="margin-top: 1.25rem;">DTMF Command Pad</div>
-      <div class="keypad">
-        <button onclick="sendDtmf('1')">1</button>
-        <button onclick="sendDtmf('2')">2</button>
-        <button onclick="sendDtmf('3')">3</button>
-        <button onclick="sendDtmf('A')" style="color: var(--accent);">A</button>
-        <button onclick="sendDtmf('4')">4</button>
-        <button onclick="sendDtmf('5')">5</button>
-        <button onclick="sendDtmf('6')">6</button>
-        <button onclick="sendDtmf('B')" style="color: var(--accent);">B</button>
-        <button onclick="sendDtmf('7')">7</button>
-        <button onclick="sendDtmf('8')">8</button>
-        <button onclick="sendDtmf('9')">9</button>
-        <button onclick="sendDtmf('C')" style="color: var(--accent);">C</button>
-        <button onclick="sendDtmf('*')" style="color: var(--accent);">*</button>
-        <button onclick="sendDtmf('0')">0</button>
-        <button onclick="sendDtmf('#')" style="color: var(--accent);">#</button>
-        <button onclick="sendDtmf('D')" style="color: var(--accent);">D</button>
+      <div class="stat-row" style="margin-top: 1rem; border-top: 1px solid #263349;">
+        <span class="stat-label">Web Audio Engine</span>
+        <span id="audio-monitor-status" class="stat-value" style="color: var(--text-muted);">MUTED</span>
       </div>
-    <!-- Live Browser Audio Stream & Web PTT Card -->
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Node Link Control Panel -->
     <div class="card">
-      <div class="card-title">Live Web Audio & Virtual PTT</div>
-      <div class="stat-row">
-        <span class="stat-label">Audio Monitor Output</span>
-        <span id="audio-monitor-status" class="stat-value" style="color: var(--accent);">IDLE</span>
+      <div class="card-title">Node Link Manager</div>
+      <div class="input-group">
+        <input type="text" id="target-node-input" class="input-field" placeholder="Target Node (e.g. 50000)" />
+        <button class="btn" onclick="connectNode()">Link Node</button>
+        <button class="btn btn-danger" onclick="disconnectNode()">Unlink</button>
       </div>
-      <div class="stat-row">
-        <span class="stat-label">Buffer Latency</span>
-        <span id="audio-latency" class="stat-value">60 ms</span>
+      <div style="display: flex; gap: 0.5rem;">
+        <button class="btn" style="background: #334155; color: var(--text); flex: 1;" onclick="quickConnect('1999')">Loopback (1999)</button>
+        <button class="btn" style="background: #334155; color: var(--text); flex: 1;" onclick="quickConnect('2000')">Parrot (2000)</button>
       </div>
-      <div style="margin-top: 1rem; display: flex; gap: 0.75rem;">
-        <button id="btn-audio-listen" class="btn" onclick="toggleAudioMonitor()">Enable Web Audio Monitor</button>
-        <button id="btn-web-ptt" class="btn btn-danger" onmousedown="webPttPress()" onmouseup="webPttRelease()" ontouchstart="webPttPress()" ontouchend="webPttRelease()">Virtual PTT (Hold)</button>
+    </div>
+
+    <!-- Interactive DTMF Keypad -->
+    <div class="card">
+      <div class="card-title">DTMF Keypad</div>
+      <div class="keypad">
+        <button class="keypad-btn" onclick="sendDtmf('1')">1</button>
+        <button class="keypad-btn" onclick="sendDtmf('2')">2</button>
+        <button class="keypad-btn" onclick="sendDtmf('3')">3</button>
+        <button class="keypad-btn" style="color: var(--accent)" onclick="sendDtmf('A')">A</button>
+
+        <button class="keypad-btn" onclick="sendDtmf('4')">4</button>
+        <button class="keypad-btn" onclick="sendDtmf('5')">5</button>
+        <button class="keypad-btn" onclick="sendDtmf('6')">6</button>
+        <button class="keypad-btn" style="color: var(--accent)" onclick="sendDtmf('B')">B</button>
+
+        <button class="keypad-btn" onclick="sendDtmf('7')">7</button>
+        <button class="keypad-btn" onclick="sendDtmf('8')">8</button>
+        <button class="keypad-btn" onclick="sendDtmf('9')">9</button>
+        <button class="keypad-btn" style="color: var(--accent)" onclick="sendDtmf('C')">C</button>
+
+        <button class="keypad-btn" style="color: #eab308" onclick="sendDtmf('*')">*</button>
+        <button class="keypad-btn" onclick="sendDtmf('0')">0</button>
+        <button class="keypad-btn" style="color: #eab308" onclick="sendDtmf('#')">#</button>
+        <button class="keypad-btn" style="color: var(--accent)" onclick="sendDtmf('D')">D</button>
       </div>
     </div>
   </div>
@@ -291,25 +344,72 @@
       document.getElementById('btn-web-ptt').style.filter = 'none';
     }
 
+    function applyStatusData(data) {
+      document.getElementById('callsign').textContent = data.callsign;
+      document.getElementById('local-node').textContent = data.local_node;
+      document.getElementById('connected-node').textContent = data.connected_node || 'DISCONNECTED';
+      document.getElementById('session-state').textContent = data.state;
+      document.getElementById('rf-freq').textContent = data.rf_freq + ' MHz';
+      document.getElementById('rf-ctcss').textContent = data.rf_ctcss.toFixed(1) + ' Hz';
+      document.getElementById('squelch-lvl').textContent = 'Level ' + data.squelch_level;
+
+      const ledCos = document.getElementById('led-cos');
+      if (data.cos_active) {
+        ledCos.classList.add('cos-active');
+        document.getElementById('rx-vu-bar').style.width = '75%';
+      } else {
+        ledCos.classList.remove('cos-active');
+        document.getElementById('rx-vu-bar').style.width = '0%';
+      }
+
+      const ledPtt = document.getElementById('led-ptt');
+      if (data.ptt_active) {
+        ledPtt.classList.add('ptt-active');
+      } else {
+        ledPtt.classList.remove('ptt-active');
+      }
+    }
+
+    // Real-Time WebSocket Telemetry Client
+    function setupWebSocket() {
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUri = proto + '//' + window.location.host + '/ws';
+      const badge = document.getElementById('ws-badge');
+      const ws = new WebSocket(wsUri);
+
+      ws.onopen = () => {
+        badge.textContent = 'LIVE WS';
+        badge.style.background = 'var(--green)';
+        badge.style.color = '#0f172a';
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          applyStatusData(data);
+        } catch (e) {}
+      };
+
+      ws.onclose = () => {
+        badge.textContent = 'WS RECONNECT';
+        badge.style.background = '#eab308';
+        badge.style.color = '#0f172a';
+        setTimeout(setupWebSocket, 2000);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    }
+
     async function updateStatus() {
       try {
         const res = await fetch('/api/status');
         if (res.ok) {
           const data = await res.json();
-          document.getElementById('callsign').textContent = data.callsign;
-          document.getElementById('local-node').textContent = data.local_node;
-          document.getElementById('connected-node').textContent = data.connected_node || 'DISCONNECTED';
-          document.getElementById('session-state').textContent = data.state;
-
-          const ledCos = document.getElementById('led-cos');
-          if (data.cos_active) ledCos.classList.add('cos-active'); else ledCos.classList.remove('cos-active');
-
-          const ledPtt = document.getElementById('led-ptt');
-          if (data.ptt_active) ledPtt.classList.add('ptt-active'); else ledPtt.classList.remove('ptt-active');
+          applyStatusData(data);
         }
-      } catch (e) {
-        console.warn('Status poll error:', e);
-      }
+      } catch (e) {}
     }
 
     async function connectNode() {
@@ -321,6 +421,11 @@
         body: JSON.stringify({ target_node: node })
       });
       updateStatus();
+    }
+
+    function quickConnect(node) {
+      document.getElementById('target-node-input').value = node;
+      connectNode();
     }
 
     async function disconnectNode() {
@@ -340,8 +445,8 @@
       await fetch('/api/cwid', { method: 'POST' });
     }
 
-    setInterval(updateStatus, 1000);
-    updateStatus();
+    setupWebSocket();
+    setInterval(updateStatus, 3000);
   </script>
 </body>
 </html>

@@ -1,12 +1,16 @@
 //! # asl-core
 //!
-//! Core repeater controller state machine, timer handling, and telemetry logic for Rusty_Allstar.
+//! Core repeater controller state machine, timer handling, conference bridge, and telemetry logic for Rusty_Allstar.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate alloc;
+
+pub mod conference_bridge;
 pub mod dtmf_command;
 pub mod repeater;
 
+pub use conference_bridge::{ConferenceBridge, ConnectedPeer, LinkMode};
 pub use dtmf_command::{DtmfCommand, DtmfCommandProcessor};
 pub use repeater::{Action, ControllerState, RepeaterConfig, RepeaterController};
 
