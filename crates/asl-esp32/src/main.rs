@@ -18,6 +18,9 @@ use asl_esp32::{
     AudioFrame, AudioRingBuffer,
 };
 
+#[cfg(feature = "esp-target")]
+use esp_idf_svc::hal::prelude::*;
+
 pub struct MicroNodeFirmware {
     pub nvs: NodeNvsConfig,
     pub pins: PinConfig,
@@ -68,6 +71,12 @@ impl MicroNodeFirmware {
 
     /// Boot sequence: loads NVS config, handshakes with SA818 radio, and initializes I2S
     pub fn boot(&mut self) -> Result<(), ()> {
+        #[cfg(feature = "esp-target")]
+        {
+            // Initializes ESP-IDF FreeRTOS system services and patch tables
+            esp_idf_svc::sys::link_patches();
+        }
+
         self.i2s_driver.init()?;
         let mut buf = [0u8; 128];
         let _ = Sa818Driver::cmd_connect(&mut buf);

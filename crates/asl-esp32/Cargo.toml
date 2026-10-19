@@ -11,8 +11,17 @@ iax2-proto = { path = "../iax2-proto" }
 asl-dsp = { path = "../asl-dsp" }
 asl-core = { path = "../asl-core" }
 asl-client = { path = "../asl-client" }
+asl-web = { path = "../asl-web" }
+
+# Real ESP-IDF hardware dependencies (enabled when compiling for real ESP32 hardware)
+esp-idf-svc = { version = "0.49", optional = true, default-features = false, features = ["std"] }
+esp-idf-hal = { version = "0.44", optional = true }
+esp-idf-sys = { version = "0.35", optional = true }
+
+[build-dependencies]
+embuild = { version = "0.32", optional = true }
 
 [features]
 default = []
-# Enabled when compiling for real ESP32 hardware with esp-idf
-esp-target = []
+# Enabled when cross-compiling for real ESP32 hardware with esp-idf
+esp-target = ["dep:esp-idf-svc", "dep:esp-idf-hal", "dep:esp-idf-sys", "dep:embuild"]
